@@ -30,6 +30,9 @@ export async function POST(req: Request) {
       name: user.name,
       email: user.email,
       role: "user",
+      templeName: user.templeName,
+      studentClass: user.studentClass,
+      paymentId: user.paymentId,
     });
   } catch (error: any) {
     return NextResponse.json(

@@ -14,11 +14,21 @@ export default function SubadminNotification() {
     message: "",
   });
 
-  // English Comment: Retrieve subadmin's temple name from storage
+  // English Comment: Retrieve subadmin's temple name from storage or URL
   useEffect(() => {
-    const temple = localStorage.getItem("subadmin_temple_name");
+    const searchParams = new URLSearchParams(window.location.search);
+    let temple = searchParams.get("temple");
+
+    if (!temple) {
+      temple = localStorage.getItem("subadmin_temple_name");
+    }
+
     if (temple) {
       setCurrentTemple(temple);
+      // Sync to localStorage if it was only in the URL
+      if (localStorage.getItem("subadmin_temple_name") !== temple) {
+        localStorage.setItem("subadmin_temple_name", temple);
+      }
     } else {
       router.push("/subadmin/auth");
     }

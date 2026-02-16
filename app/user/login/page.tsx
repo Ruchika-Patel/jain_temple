@@ -115,14 +115,56 @@ function UserAuthContent() {
 
   const handleLogin = async () => {
     showModal("loading", "Authenticating...", "Verifying your credentials");
-    // English Comment: Simulating login delay
-    setTimeout(() => {
-      showModal("success", "Login Successful", "Welcome back! Redirecting in 2 seconds...");
-      setTimeout(() => {
-        setLoading(false);
-        router.push("/user/dashboard");
-      }, 2000);
-    }, 1500);
+    try {
+      const res = await fetch("/api/user/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
+
+      const result = await res.json();
+
+      if (res.ok && result.success) {
+        // English Comment: Store the complete user object from DB
+        const userData = {
+          name: result.name,
+          email: result.email,
+          role: "user",
+          templeName: result.templeName,
+          studentClass: result.studentClass,
+          paymentId: result.paymentId,
+        };
+        localStorage.setItem("current_user", JSON.stringify(userData));
+
+        showModal(
+          "success",
+          "Login Successful",
+          "Welcome back! Redirecting in 2 seconds..."
+        );
+        setTimeout(() => {
+          setLoading(false);
+          router.push("/user/dashboard");
+        }, 2000);
+      } else {
+        showModal(
+          "error",
+          "Login Failed",
+          result.message || "Invalid credentials."
+        );
+      }
+    } catch (error) {
+      console.error("Login Error:", error);
+      showModal(
+        "error",
+        "System Error",
+        "Failed to connect to authentication server."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   // English Comment: Modified to accept paymentId and send data to MongoDB

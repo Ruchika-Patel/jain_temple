@@ -36,7 +36,7 @@ export default function NotificationPanel({
         }
       }
 
-      // 2. Fetching Subadmin Notifications (Only for users)
+      // 2. Fetching Subadmin Notifications (Only for students/users)
       if (userRole === "user" && templeName) {
         const subRes = await fetch(
           `/api/subadmin/notifications?temple=${encodeURIComponent(templeName)}`,
@@ -51,6 +51,8 @@ export default function NotificationPanel({
             }));
             allNotices = [...allNotices, ...templeNotices];
           }
+        } else {
+          console.warn("Subadmin notifications fetch failed:", subRes.status);
         }
       }
 

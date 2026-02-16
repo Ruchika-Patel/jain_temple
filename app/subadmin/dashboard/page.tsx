@@ -46,7 +46,7 @@ export default function SubAdminDashboard() {
   const showModal = (
     status: "success" | "error" | "loading",
     title: string,
-    message: string
+    message: string,
   ) => {
     setModal({ isOpen: true, status, title, message });
     if (status !== "loading") {
@@ -90,6 +90,13 @@ export default function SubAdminDashboard() {
         templeName: currentTemple,
         role: "subadmin",
       });
+      // PROACTIVELY SYNC TO LOCAL STORAGE
+      if (typeof window !== "undefined") {
+        const storedTemple = localStorage.getItem("subadmin_temple_name");
+        if (storedTemple !== currentTemple) {
+          localStorage.setItem("subadmin_temple_name", currentTemple);
+        }
+      }
     }
   }, [currentTemple]);
 
@@ -159,7 +166,11 @@ export default function SubAdminDashboard() {
     }
 
     if (!currentTemple) {
-      showModal("error", "Context Missing", "Temple context not found. Please log in again.");
+      showModal(
+        "error",
+        "Context Missing",
+        "Temple context not found. Please log in again.",
+      );
       return;
     }
 
@@ -184,7 +195,11 @@ export default function SubAdminDashboard() {
       }
     } catch (error) {
       console.error("API Error:", error);
-      showModal("error", "Network Error", "Connection failed. Please check your internet.");
+      showModal(
+        "error",
+        "Network Error",
+        "Connection failed. Please check your internet.",
+      );
     } finally {
       setLoading(false);
     }
@@ -211,7 +226,10 @@ export default function SubAdminDashboard() {
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           className="p-2 text-stone-600 hover:bg-amber-50 rounded-lg transition-colors"
         >
-          <Megaphone size={20} className={isMobileMenuOpen ? "rotate-12" : ""} />
+          <Megaphone
+            size={20}
+            className={isMobileMenuOpen ? "rotate-12" : ""}
+          />
         </button>
       </nav>
 
@@ -220,18 +238,31 @@ export default function SubAdminDashboard() {
         <div className="lg:hidden fixed inset-0 z-[60] bg-stone-900/40 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="w-72 bg-white h-full p-6 flex flex-col animate-in slide-in-from-left duration-500">
             <div className="flex justify-between items-center mb-8">
-              <span className="font-black text-amber-600 tracking-tighter text-xl uppercase">Menu</span>
-              <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-stone-400"><X size={24} /></button>
+              <span className="font-black text-amber-600 tracking-tighter text-xl uppercase">
+                Menu
+              </span>
+              <button
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-2 text-stone-400"
+              >
+                <X size={24} />
+              </button>
             </div>
             <nav className="space-y-2 flex-1">
               <button
-                onClick={() => { setActiveTab("committee"); setIsMobileMenuOpen(false); }}
+                onClick={() => {
+                  setActiveTab("committee");
+                  setIsMobileMenuOpen(false);
+                }}
                 className={`w-full flex items-center gap-3 px-5 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${activeTab === "committee" ? "bg-amber-600 text-white shadow-lg shadow-amber-100" : "text-stone-400"}`}
               >
                 <Users size={18} /> Committee
               </button>
               <button
-                onClick={() => { setActiveTab("classes"); setIsMobileMenuOpen(false); }}
+                onClick={() => {
+                  setActiveTab("classes");
+                  setIsMobileMenuOpen(false);
+                }}
                 className={`w-full flex items-center gap-3 px-5 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${activeTab === "classes" ? "bg-amber-600 text-white shadow-lg shadow-amber-100" : "text-stone-400"}`}
               >
                 <BookOpen size={18} /> Classes
@@ -262,8 +293,8 @@ export default function SubAdminDashboard() {
           <button
             onClick={() => setActiveTab("committee")}
             className={`w-full flex items-center gap-3 px-5 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${activeTab === "committee"
-              ? "bg-amber-600 text-white shadow-lg shadow-amber-100"
-              : "text-stone-400 hover:bg-amber-50 hover:text-amber-600"
+                ? "bg-amber-600 text-white shadow-lg shadow-amber-100"
+                : "text-stone-400 hover:bg-amber-50 hover:text-amber-600"
               }`}
           >
             <Users size={18} /> Committee
@@ -271,8 +302,8 @@ export default function SubAdminDashboard() {
           <button
             onClick={() => setActiveTab("classes")}
             className={`w-full flex items-center gap-3 px-5 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${activeTab === "classes"
-              ? "bg-amber-600 text-white shadow-lg shadow-amber-100"
-              : "text-stone-400 hover:bg-amber-50 hover:text-amber-600"
+                ? "bg-amber-600 text-white shadow-lg shadow-amber-100"
+                : "text-stone-400 hover:bg-amber-50 hover:text-amber-600"
               }`}
           >
             <BookOpen size={18} /> Classes
@@ -308,7 +339,7 @@ export default function SubAdminDashboard() {
               {/* Send Notification Box */}
               <div
                 onClick={() =>
-                  (window.location.href = "/subadmin/notifications")
+                  (window.location.href = `/subadmin/notifications?temple=${encodeURIComponent(currentTemple)}`)
                 }
                 className="px-5 py-2 hover:bg-amber-100/80 rounded-xl transition-all active:scale-95 cursor-pointer group flex flex-col items-center justify-center border-r border-amber-200/50"
               >
@@ -385,8 +416,8 @@ export default function SubAdminDashboard() {
                           setEditingIndex(editingIndex === index ? null : index)
                         }
                         className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${editingIndex === index
-                          ? "bg-green-600 text-white shadow-lg shadow-green-100"
-                          : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                            ? "bg-green-600 text-white shadow-lg shadow-green-100"
+                            : "bg-stone-100 text-stone-600 hover:bg-stone-200"
                           }`}
                       >
                         {editingIndex === index ? "Done" : "Edit Details"}
@@ -668,7 +699,11 @@ export default function SubAdminDashboard() {
                           `<iframe src="${selectedPortal.syllabus}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`,
                         );
                       } else {
-                        showModal("error", "Not Available", "No syllabus file has been uploaded for this class yet.");
+                        showModal(
+                          "error",
+                          "Not Available",
+                          "No syllabus file has been uploaded for this class yet.",
+                        );
                       }
                     }}
                     className="mt-2 p-6 bg-stone-50 rounded-2xl text-blue-600 text-sm font-bold italic leading-relaxed border border-stone-100 cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-all"

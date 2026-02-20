@@ -76,7 +76,7 @@ const Navbar: React.FC<NavbarProps> = ({
                             className="w-10 h-10 object-contain mr-3 group-hover:scale-110 transition-transform"
                         />
                         <span className="text-xl font-bold text-stone-800 tracking-tight">
-                            Jainm<span className="text-amber-600">Gurukul</span>
+                            Jain<span className="text-amber-600">Pathshala</span>
                         </span>
                     </div>
 
@@ -90,10 +90,10 @@ const Navbar: React.FC<NavbarProps> = ({
                                     setIsMenuOpen(false);
                                 }}
                                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${link.primary
-                                        ? "bg-amber-600 text-white hover:bg-amber-700 hover:shadow-lg"
-                                        : link.active
-                                            ? "bg-amber-100 text-amber-700"
-                                            : "text-stone-500 hover:text-stone-800 hover:bg-stone-50"
+                                    ? "bg-amber-600 text-white hover:bg-amber-700 hover:shadow-lg"
+                                    : link.active
+                                        ? "bg-amber-100 text-amber-700"
+                                        : "text-stone-500 hover:text-stone-800 hover:bg-stone-50"
                                     }`}
                             >
                                 {link.icon}
@@ -126,10 +126,10 @@ const Navbar: React.FC<NavbarProps> = ({
                                     setIsMenuOpen(false);
                                 }}
                                 className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-sm font-bold transition-all ${link.primary
-                                        ? "bg-amber-600 text-white shadow-lg"
-                                        : link.active
-                                            ? "bg-amber-50 text-amber-700 border border-amber-100"
-                                            : "text-stone-600 hover:bg-stone-50"
+                                    ? "bg-amber-600 text-white shadow-lg"
+                                    : link.active
+                                        ? "bg-amber-50 text-amber-700 border border-amber-100"
+                                        : "text-stone-600 hover:bg-stone-50"
                                     }`}
                             >
                                 <div className={`${link.primary ? "text-white" : link.active ? "text-amber-600" : "text-stone-400"}`}>

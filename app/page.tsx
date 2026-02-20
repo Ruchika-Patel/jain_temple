@@ -997,33 +997,33 @@ export default function App() {
                 with management committees.
               </p>
 
-              <div className="bg-white p-4 rounded-3xl shadow-2xl shadow-stone-200/50 border border-stone-100 space-y-4">
+              <div className="bg-white p-1.5 md:p-6 rounded-3xl shadow-2xl shadow-stone-200/50 border border-stone-100 flex flex-row md:flex-col items-center md:items-stretch gap-0.5 md:gap-4">
                 {/* Search Bar */}
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-stone-400">
-                    <Search size={20} />
+                <div className="relative flex-[2] md:flex-none">
+                  <div className="absolute inset-y-0 left-0 pl-3 md:pl-4 flex items-center pointer-events-none text-stone-400">
+                    <Search size={16} className="md:w-5 md:h-5" />
                   </div>
                   <input
                     type="text"
-                    placeholder="Search by temple name..."
-                    className="block w-full pl-12 pr-4 py-4 bg-stone-50 border-none rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none transition-all placeholder:text-stone-400 text-sm md:text-base"
+                    placeholder="Search..."
+                    className="block w-full pl-8 md:pl-12 pr-2 md:pr-4 py-1.5 md:py-4 bg-stone-50 border-none rounded-xl md:rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none transition-all placeholder:text-stone-400 text-xs md:text-base"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
 
                 {/* City/State Filters */}
-                <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex flex-row gap-0.5 md:gap-4 flex-[3] md:flex-none">
                   <div className="flex-1 relative">
                     <select
-                      className="w-full pl-4 pr-10 py-4 bg-stone-50 rounded-2xl appearance-none focus:ring-2 focus:ring-amber-500 outline-none text-stone-700 font-medium cursor-pointer text-sm md:text-base border-none"
+                      className="w-full pl-2 md:pl-4 pr-6 md:pr-10 py-1.5 md:py-4 bg-stone-50 rounded-xl md:rounded-2xl appearance-none focus:ring-2 focus:ring-amber-500 outline-none text-stone-700 font-medium cursor-pointer text-[10px] md:text-base border-none"
                       value={filterState}
                       onChange={(e) => {
                         setFilterState(e.target.value);
                         setFilterCity("");
                       }}
                     >
-                      <option value="">All States</option>
+                      <option value="">State</option>
                       {availableStates.map((state) => (
                         <option key={state} value={state}>
                           {state}
@@ -1031,19 +1031,19 @@ export default function App() {
                       ))}
                     </select>
                     <ChevronLeft
-                      className="absolute right-4 top-1/2 -translate-y-1/2 -rotate-90 text-stone-400 pointer-events-none"
-                      size={16}
+                      className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 -rotate-90 text-stone-400 pointer-events-none"
+                      size={12}
                     />
                   </div>
                   <div className="flex-1 relative">
                     <select
                       disabled={!filterState}
-                      className="w-full pl-4 pr-10 py-4 bg-stone-50 rounded-2xl appearance-none focus:ring-2 focus:ring-amber-500 outline-none text-stone-700 font-medium disabled:opacity-50 cursor-pointer text-sm md:text-base border-none"
+                      className="w-full pl-2 md:pl-4 pr-6 md:pr-10 py-1.5 md:py-4 bg-stone-50 rounded-xl md:rounded-2xl appearance-none focus:ring-2 focus:ring-amber-500 outline-none text-stone-700 font-medium disabled:opacity-50 cursor-pointer text-[10px] md:text-base border-none"
                       value={filterCity}
                       onChange={(e) => setFilterCity(e.target.value)}
                     >
                       <option value="">
-                        All Cities {filterState ? `in ${filterState}` : ""}
+                        City
                       </option>
                       {availableCities.map((city) => (
                         <option key={city} value={city}>
@@ -1052,8 +1052,8 @@ export default function App() {
                       ))}
                     </select>
                     <ChevronLeft
-                      className="absolute right-4 top-1/2 -translate-y-1/2 -rotate-90 text-stone-400 pointer-events-none"
-                      size={16}
+                      className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 -rotate-90 text-stone-400 pointer-events-none"
+                      size={12}
                     />
                   </div>
                 </div>
@@ -2990,7 +2990,7 @@ export default function App() {
                   className="w-10 h-10 object-contain mr-3 opacity-80"
                 />
                 <span className="text-2xl font-bold text-white tracking-tight">
-                  Jainm Gurukul
+                  Jain Pathshala
                 </span>
               </div>
               <p className="text-stone-500 max-w-sm leading-relaxed">

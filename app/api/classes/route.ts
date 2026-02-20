@@ -2,6 +2,14 @@ import connectDB from "@/lib/mongodb";
 import Class from "@/models/Class";
 import { NextResponse } from "next/server";
 
+const HARDCODED_CLASSES = Array.from({ length: 12 }, (_, i) => {
+    const n = i + 1;
+    const s = ["th", "st", "nd", "rd"],
+        v = n % 100;
+    const suffix = s[(v - 20) % 10] || s[v] || s[0];
+    return `${n}${suffix} Class`;
+});
+
 export async function GET(req: Request) {
     try {
         await connectDB();
@@ -9,21 +17,36 @@ export async function GET(req: Request) {
         const templeName = searchParams.get("templeName");
         const forRegistration = searchParams.get("forRegistration");
 
-        if (forRegistration === "true") {
-            const nextClass = await Class.find({ isCompleted: { $ne: true } })
-                .sort({ sequenceOrder: 1 })
-                .limit(1)
-                .lean();
-            return NextResponse.json({ success: true, data: nextClass });
-        }
+        // Fetch existing class data from DB
+        const dbClasses = await Class.find({}).lean();
 
-        const classes = await Class.find({}).sort({ sequenceOrder: 1 }).lean();
+        // Merge hardcoded classes with DB data
+        const mergedClasses = HARDCODED_CLASSES.map((grade, index) => {
+            const dbClass = dbClasses.find((c: any) => c.grade === grade);
+            return dbClass || {
+                grade,
+                examVenue: "Not Assigned",
+                examDate: "TBA",
+                examTime: "TBA",
+                instructions: "No specific instructions",
+                status: "Active",
+                isCompleted: false,
+                students: 0
+            };
+        });
+
+        if (forRegistration === "true") {
+            // For registration, we typically just need the first available/next class
+            // But if it's dynamic based on "isCompleted", we filter merged list
+            const nextClass = mergedClasses.find(c => !c.isCompleted);
+            return NextResponse.json({ success: true, data: nextClass ? [nextClass] : [] });
+        }
 
         // English Comment: If templeName is provided, calculate student counts for this specific temple
         if (templeName) {
             const User = (await import("@/models/User")).default;
 
-            const classesWithCounts = await Promise.all(classes.map(async (cls: any) => {
+            const classesWithCounts = await Promise.all(mergedClasses.map(async (cls: any) => {
                 const count = await User.countDocuments({
                     templeName: { $regex: new RegExp(`^${templeName.trim()}$`, "i") },
                     studentClass: cls.grade,
@@ -35,7 +58,7 @@ export async function GET(req: Request) {
             return NextResponse.json({ success: true, data: classesWithCounts });
         }
 
-        return NextResponse.json({ success: true, data: classes });
+        return NextResponse.json({ success: true, data: mergedClasses });
     } catch (error: any) {
         console.error("[API Classes GET] Error:", error);
         return NextResponse.json(
@@ -50,12 +73,11 @@ export async function POST(req: Request) {
         await connectDB();
         const body = await req.json();
 
-        const { id, sequenceOrder, isCompleted, ...data } = body;
+        const { id, isCompleted, ...data } = body;
 
-        // Ensure sequenceOrder is a number
+        // Ensure isCompleted is a boolean
         const formattedData = {
             ...data,
-            sequenceOrder: sequenceOrder ? Number(sequenceOrder) : 0,
             isCompleted: isCompleted === true || isCompleted === "true",
         };
 

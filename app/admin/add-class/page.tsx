@@ -22,7 +22,6 @@ export default function AddClassPage() {
   const [examDate, setExamDate] = useState("");
   const [examTime, setExamTime] = useState("");
   const [instructions, setInstructions] = useState("");
-  const [sequenceOrder, setSequenceOrder] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [adminClasses, setAdminClasses] = useState<any[]>([]);
@@ -49,6 +48,10 @@ export default function AddClassPage() {
     }
   };
 
+  const existingClass = editingId
+    ? adminClasses.find((c: any) => String(c._id || c.id) === String(editingId))
+    : (grade ? adminClasses.find((c: any) => c.grade === grade) : null);
+
   const fetchClasses = async () => {
     try {
       const response = await fetch("/api/classes");
@@ -72,7 +75,6 @@ export default function AddClassPage() {
             setExamDate(classToEdit.examDate || "");
             setExamTime(classToEdit.examTime || "");
             setInstructions(classToEdit.instructions || "");
-            setSequenceOrder(classToEdit.sequenceOrder || 0);
             setIsCompleted(classToEdit.isCompleted || false);
           }
         }
@@ -114,7 +116,7 @@ export default function AddClassPage() {
       showModal("error", "Grade Missing", "Please enter Grade first!");
       return;
     }
-    showModal("success", "Draft Saved", `${grade} saved. Now fill exam details.`);
+    handleDeployData();
   };
 
   const handleDeployData = async () => {
@@ -144,11 +146,6 @@ export default function AddClassPage() {
 
     showModal("loading", "Deploying...", "Synchronizing with community portal");
 
-    // Find existing item data
-    const existingClass = editingId
-      ? adminClasses.find((c: any) => String(c._id || c.id) === String(editingId))
-      : null;
-
     const newClassData = {
       id: editingId,
       grade,
@@ -162,7 +159,6 @@ export default function AddClassPage() {
       fileName: selectedFile
         ? selectedFile.name
         : existingClass?.fileName || null,
-      sequenceOrder: Number(sequenceOrder),
       isCompleted: isCompleted,
     };
 
@@ -193,7 +189,6 @@ export default function AddClassPage() {
           setInstructions("");
           setEditingId(null);
           setSelectedFile(null);
-          setSequenceOrder(0);
           setIsCompleted(false);
 
           // Refresh classes list
@@ -247,7 +242,7 @@ export default function AddClassPage() {
           <p className="mt-4 text-stone-800 font-bold text-xs uppercase tracking-widest">
             {editingId
               ? `Editing details for ${grade}`
-              : "Control Center: Update Class & Exam Data"}
+              : "Control Center: Update Class & Exam Data (1st to 12th)"}
           </p>
         </div>
 
@@ -270,7 +265,27 @@ export default function AddClassPage() {
                 </label>
                 <select
                   value={grade}
-                  onChange={(e) => setGrade(e.target.value)}
+                  onChange={(e) => {
+                    const selectedGrade = e.target.value;
+                    setGrade(selectedGrade);
+                    // English Comment: Automatically load data if class exists
+                    const existing = adminClasses.find(c => c.grade === selectedGrade);
+                    if (existing && (existing._id || existing.id)) {
+                      setEditingId(existing._id || existing.id);
+                      setExamVenue(existing.examVenue || "");
+                      setExamDate(existing.examDate || "");
+                      setExamTime(existing.examTime || "");
+                      setInstructions(existing.instructions || "");
+                      setIsCompleted(existing.isCompleted || false);
+                    } else {
+                      setEditingId(null);
+                      setExamVenue("");
+                      setExamDate("");
+                      setExamTime("");
+                      setInstructions("");
+                      setIsCompleted(false);
+                    }
+                  }}
                   className="w-full bg-stone-50 px-6 py-4 md:px-8 md:py-5 rounded-2xl border-2 border-stone-300 outline-none text-base font-bold text-stone-900"
                 >
                   <option value="">Choose Class...</option>
@@ -280,19 +295,6 @@ export default function AddClassPage() {
                     </option>
                   ))}
                 </select>
-              </div>
-
-              <div className="flex flex-col gap-3">
-                <label className="text-xs font-black text-stone-900 uppercase tracking-widest ml-2">
-                  Sequence Order (1, 2, 3...)
-                </label>
-                <input
-                  type="number"
-                  value={sequenceOrder}
-                  onChange={(e) => setSequenceOrder(Number(e.target.value))}
-                  placeholder="e.g. 1"
-                  className="w-full bg-stone-50 px-6 py-4 md:px-8 md:py-5 rounded-2xl border-2 border-stone-300 outline-none text-base font-bold text-stone-900"
-                />
               </div>
 
               <div className="flex items-center gap-3 p-4 bg-stone-50 rounded-2xl border-2 border-stone-300">
@@ -325,6 +327,12 @@ export default function AddClassPage() {
                 >
                   {!selectedFile ? (
                     <div className="flex flex-col items-center gap-2">
+                      {existingClass?.syllabus && (
+                        <div className="flex items-center gap-2 text-green-600 bg-green-50 px-3 py-1 rounded-full mb-2 border border-green-100 italic">
+                          <CheckCircle size={14} />
+                          <span className="text-[9px] font-black uppercase tracking-tighter">Syllabus Already Uploaded</span>
+                        </div>
+                      )}
                       <UploadCloud size={30} className="text-stone-700" />
                       <p className="text-[10px] font-black uppercase tracking-widest">
                         {editingId
@@ -425,15 +433,35 @@ export default function AddClassPage() {
               </div>
             </div>
 
-            <button
-              onClick={handleDeployData}
-              className="w-full mt-10 bg-orange-600 text-white py-5 md:py-6 rounded-2xl font-black text-sm uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-orange-700 transition-all shadow-lg active:scale-95"
-            >
-              <Save size={20} />{" "}
-              {editingId
-                ? "Update Class Data"
-                : "Deploy to Dashboard"}
-            </button>
+            <div className="flex flex-col sm:flex-row gap-4 mt-10">
+              <button
+                onClick={handleDeployData}
+                className="flex-1 bg-orange-600 text-white py-5 md:py-6 rounded-2xl font-black text-sm uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-orange-700 transition-all shadow-lg active:scale-95"
+              >
+                <Save size={20} />{" "}
+                {editingId
+                  ? "Update Class Data"
+                  : "Deploy to Dashboard"}
+              </button>
+
+              {editingId && (
+                <button
+                  onClick={() => {
+                    setEditingId(null);
+                    setGrade("");
+                    setExamVenue("");
+                    setExamDate("");
+                    setExamTime("");
+                    setInstructions("");
+                    setIsCompleted(false);
+                    window.history.pushState({}, "", window.location.pathname);
+                  }}
+                  className="px-8 py-5 md:py-6 bg-stone-100 text-stone-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-stone-200 transition-all flex items-center justify-center gap-2"
+                >
+                  <X size={18} /> Cancel Edit
+                </button>
+              )}
+            </div>
           </section>
         </div>
         {/* ========================================================== */}
@@ -447,16 +475,9 @@ export default function AddClassPage() {
                 Class & Exam Directory
               </h3>
               <p className="text-sm text-stone-500">
-                Manage syllabus, exam dates, and class settings.
+                Manage syllabus, exam dates, and class settings for 1st to 12th standard.
               </p>
             </div>
-            {/* Button to go to Add Class Page */}
-            <button
-              onClick={() => (window.location.href = "/admin/add-class")}
-              className="px-6 py-3 bg-stone-900 text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-black transition-all flex items-center gap-2"
-            >
-              + Add New Class
-            </button>
           </div>
 
           <div className="bg-white rounded-[1.5rem] md:rounded-[2rem] shadow-sm border border-stone-100 overflow-hidden">
@@ -473,9 +494,6 @@ export default function AddClassPage() {
                     <th className="px-8 py-5 text-[10px] font-black text-stone-400 uppercase tracking-widest">
                       Exam Schedule
                     </th>
-                    <th className="px-8 py-5 text-[10px] font-black text-stone-400 uppercase tracking-widest">
-                      Seq.
-                    </th>
                     <th className="px-8 py-5 text-[10px] font-black text-stone-400 uppercase tracking-widest text-right">
                       Actions
                     </th>
@@ -484,7 +502,7 @@ export default function AddClassPage() {
                 <tbody className="divide-y divide-stone-100">
                   {adminClasses.map((cls: any) => (
                     <tr
-                      key={cls._id || cls.id}
+                      key={cls._id || cls.id || cls.grade}
                       className="hover:bg-stone-50 transition-colors"
                     >
                       <td className="px-8 py-5 text-sm font-bold text-stone-800">
@@ -507,14 +525,18 @@ export default function AddClassPage() {
                       <td className="px-8 py-5 text-xs text-stone-600 font-medium">
                         {cls.examDate} at {cls.examTime}
                       </td>
-                      <td className="px-8 py-5 text-xs text-stone-600 font-bold">
-                        {cls.sequenceOrder || 0}
-                      </td>
                       <td className="px-8 py-5 text-right">
                         <button
-                          onClick={() =>
-                            (window.location.href = `/admin/add-class?edit=${cls._id || cls.id}`)
-                          }
+                          onClick={() => {
+                            setEditingId(cls._id || cls.id);
+                            setGrade(cls.grade || "");
+                            setExamVenue(cls.examVenue || "");
+                            setExamDate(cls.examDate || "");
+                            setExamTime(cls.examTime || "");
+                            setInstructions(cls.instructions || "");
+                            setIsCompleted(cls.isCompleted || false);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
                           className="text-stone-400 hover:text-orange-600 transition-colors"
                         >
                           Edit

@@ -13,6 +13,7 @@ const EventSchema = new mongoose.Schema({
   title: { type: String, required: true },
   date: String,
   description: String,
+  image: { type: String, default: "" }, // Added image field for events
 });
 
 // Reusable schema for both Leaders and Committee Members

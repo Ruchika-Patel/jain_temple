@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   Menu,
   X,
+  Lock,
 } from "lucide-react";
 
 export default function UserDashboard() {
@@ -21,6 +22,9 @@ export default function UserDashboard() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [syllabusData, setSyllabusData] = useState<any>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [nextClass, setNextClass] = useState<any>(null);
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [unlockDate, setUnlockDate] = useState<Date | null>(null);
 
   useEffect(() => {
     const savedUser = localStorage.getItem("current_user");
@@ -31,22 +35,42 @@ export default function UserDashboard() {
     const userData = JSON.parse(savedUser);
     setUser(userData);
 
-    const fetchSyllabus = async () => {
+    const fetchSyllabusAndNextClass = async () => {
       try {
         const response = await fetch("/api/classes");
         const result = await response.json();
         if (result.success) {
-          const match = result.data.find(
-            (c: any) => c.grade === userData.studentClass
-          );
-          setSyllabusData(match);
+          const classes = result.data.sort((a: any, b: any) => a.grade.localeCompare(b.grade)); // Simple sort, might need more robust logic if grades are complex
+          const currentClassIndex = classes.findIndex((c: any) => c.grade === userData.studentClass);
+
+          // Syllabus for current class
+          if (currentClassIndex !== -1) {
+            setSyllabusData(classes[currentClassIndex]);
+          }
+
+          // Next Class Logic
+          if (currentClassIndex !== -1 && currentClassIndex < classes.length - 1) {
+            const next = classes[currentClassIndex + 1];
+            setNextClass(next);
+
+            const joinDate = new Date(userData.createdAt || Date.now()); // Fallback to now if missing
+            const unlockThreshold = new Date(joinDate);
+            unlockThreshold.setMonth(unlockThreshold.getMonth() + 5);
+            setUnlockDate(unlockThreshold);
+
+            if (new Date() >= unlockThreshold) {
+              setIsUnlocked(true);
+            } else {
+              setIsUnlocked(false);
+            }
+          }
         }
       } catch (error) {
-        console.error("Error fetching syllabus:", error);
+        console.error("Error fetching classes:", error);
       }
     };
 
-    fetchSyllabus();
+    fetchSyllabusAndNextClass();
   }, [router]);
 
   const handleDownload = () => {
@@ -156,6 +180,7 @@ export default function UserDashboard() {
             <NotificationPanel
               userRole="user"
               templeName={user?.templeName} // Student ka temple name
+              studentClass={user?.studentClass}
             />
 
             {/* Status Box */}
@@ -209,6 +234,50 @@ export default function UserDashboard() {
             <h3 className="text-2xl font-black">₹500.00</h3>
           </div>
         </div>
+
+        {/* --- NEXT CLASS PROGRESSION --- */}
+        {nextClass && (
+          <div className={`mb-12 rounded-[2.5rem] mt-8 p-8 border ${isUnlocked ? 'bg-gradient-to-br from-stone-900 to-stone-800 text-white border-stone-800' : 'bg-stone-50 border-stone-200'} relative overflow-hidden shadow-xl`}>
+            <div className="flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
+              <div className="flex items-center gap-6">
+                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${isUnlocked ? 'bg-amber-500 text-white' : 'bg-stone-200 text-stone-400'}`}>
+                  {isUnlocked ? <BookOpen size={32} /> : <Lock size={32} />}
+                </div>
+                <div>
+                  <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${isUnlocked ? 'text-amber-500' : 'text-stone-400'}`}>
+                    {isUnlocked ? 'Unlocked & Available' : 'Locked Content'}
+                  </p>
+                  <h3 className={`text-2xl font-black uppercase italic leading-none mb-2 ${isUnlocked ? 'text-white' : 'text-stone-400'}`}>
+                    Next Level: {nextClass.grade}
+                  </h3>
+                  {!isUnlocked && unlockDate && (
+                    <p className="text-xs font-bold text-stone-500 bg-stone-200/50 px-3 py-1 rounded-full inline-block">
+                      Unlocks on {unlockDate.toLocaleDateString()}
+                    </p>
+                  )}
+                  {isUnlocked && (
+                    <p className="text-xs font-bold text-stone-400">
+                      You have completed the tenure for your current class.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                {isUnlocked ? (
+                  <button className="px-8 py-4 bg-white text-stone-900 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-stone-100 transition-all shadow-lg flex items-center gap-2">
+                    Register Now <BookOpen size={16} />
+                  </button>
+                ) : (
+                  <div className="flex flex-col items-center">
+                    <div className="w-12 h-12 rounded-full border-4 border-stone-200 border-t-amber-500 animate-spin mb-2 opacity-50"></div>
+                    <span className="text-[9px] font-black text-stone-400 uppercase tracking-widest">In Progress</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Syllabus Section */}
         <div className="bg-white rounded-[3rem] border border-stone-100 shadow-sm overflow-hidden">

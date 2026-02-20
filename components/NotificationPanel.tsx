@@ -5,11 +5,13 @@ import { Bell, X, Info, Calendar, Megaphone, MapPin } from "lucide-react";
 interface NotificationPanelProps {
   templeName?: string;
   userRole: "admin" | "subadmin" | "user";
+  studentClass?: string;
 }
 
 export default function NotificationPanel({
   templeName,
   userRole,
+  studentClass,
 }: NotificationPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -38,9 +40,12 @@ export default function NotificationPanel({
 
       // 2. Fetching Subadmin Notifications (Only for students/users)
       if (userRole === "user" && templeName) {
-        const subRes = await fetch(
-          `/api/subadmin/notifications?temple=${encodeURIComponent(templeName)}`,
-        );
+        let url = `/api/subadmin/notifications?temple=${encodeURIComponent(templeName)}`;
+        if (studentClass) {
+          url += `&studentClass=${encodeURIComponent(studentClass)}`;
+        }
+
+        const subRes = await fetch(url);
 
         if (subRes.ok) {
           const subData = await subRes.json();

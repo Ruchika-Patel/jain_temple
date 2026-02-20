@@ -22,6 +22,8 @@ export default function AddClassPage() {
   const [examDate, setExamDate] = useState("");
   const [examTime, setExamTime] = useState("");
   const [instructions, setInstructions] = useState("");
+  const [sequenceOrder, setSequenceOrder] = useState(0);
+  const [isCompleted, setIsCompleted] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [adminClasses, setAdminClasses] = useState<any[]>([]);
   const [modal, setModal] = useState<{
@@ -70,6 +72,8 @@ export default function AddClassPage() {
             setExamDate(classToEdit.examDate || "");
             setExamTime(classToEdit.examTime || "");
             setInstructions(classToEdit.instructions || "");
+            setSequenceOrder(classToEdit.sequenceOrder || 0);
+            setIsCompleted(classToEdit.isCompleted || false);
           }
         }
       }
@@ -158,6 +162,8 @@ export default function AddClassPage() {
       fileName: selectedFile
         ? selectedFile.name
         : existingClass?.fileName || null,
+      sequenceOrder: Number(sequenceOrder),
+      isCompleted: isCompleted,
     };
 
     try {
@@ -187,6 +193,8 @@ export default function AddClassPage() {
           setInstructions("");
           setEditingId(null);
           setSelectedFile(null);
+          setSequenceOrder(0);
+          setIsCompleted(false);
 
           // Refresh classes list
           fetchClasses();
@@ -208,19 +216,20 @@ export default function AddClassPage() {
       <nav className="bg-white border-b border-stone-300 sticky top-0 z-50 shadow-sm">
         <div className="max-w-5xl mx-auto px-4 md:px-8 h-20 flex items-center justify-between">
           <Link
-            href="/admin"
+            href="/?view=admin&tab=classes"
             className="group flex items-center gap-3 text-stone-700 hover:text-orange-700 transition-all font-bold text-xs uppercase tracking-widest"
           >
             <div className="p-2.5 bg-stone-100 group-hover:bg-orange-100 rounded-2xl transition-colors border border-stone-200">
               <ArrowLeft size={18} className="text-stone-900" />
             </div>
-            Back to Dashboard
+            <span className="hidden md:inline">Back to Admin Console</span>
+            <span className="md:hidden">Back</span>
           </Link>
           <div className="flex items-center gap-3">
-            <span className="text-[10px] font-black text-stone-600 uppercase tracking-widest">
+            <span className="text-[10px] font-black text-stone-600 uppercase tracking-widest hidden md:inline">
               Admin Panel
             </span>
-            <div className="w-8 h-8 bg-stone-900 rounded-xl flex items-center justify-center text-white">
+            <div className="w-8 h-8 bg-stone-900 rounded-xl flex items-center justify-center text-white shrink-0">
               <span className="font-black text-[10px]">
                 {editingId ? "EDIT" : <Sparkles size={14} />}
               </span>
@@ -271,6 +280,32 @@ export default function AddClassPage() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <label className="text-xs font-black text-stone-900 uppercase tracking-widest ml-2">
+                  Sequence Order (1, 2, 3...)
+                </label>
+                <input
+                  type="number"
+                  value={sequenceOrder}
+                  onChange={(e) => setSequenceOrder(Number(e.target.value))}
+                  placeholder="e.g. 1"
+                  className="w-full bg-stone-50 px-6 py-4 md:px-8 md:py-5 rounded-2xl border-2 border-stone-300 outline-none text-base font-bold text-stone-900"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 p-4 bg-stone-50 rounded-2xl border-2 border-stone-300">
+                <input
+                  type="checkbox"
+                  id="isCompleted"
+                  checked={isCompleted}
+                  onChange={(e) => setIsCompleted(e.target.checked)}
+                  className="w-5 h-5 accent-orange-600"
+                />
+                <label htmlFor="isCompleted" className="text-sm font-black text-stone-700 uppercase tracking-widest cursor-pointer">
+                  Mark as Completed
+                </label>
               </div>
 
               <div className="md:col-span-2 flex flex-col gap-3">
@@ -438,6 +473,9 @@ export default function AddClassPage() {
                     <th className="px-8 py-5 text-[10px] font-black text-stone-400 uppercase tracking-widest">
                       Exam Schedule
                     </th>
+                    <th className="px-8 py-5 text-[10px] font-black text-stone-400 uppercase tracking-widest">
+                      Seq.
+                    </th>
                     <th className="px-8 py-5 text-[10px] font-black text-stone-400 uppercase tracking-widest text-right">
                       Actions
                     </th>
@@ -446,11 +484,18 @@ export default function AddClassPage() {
                 <tbody className="divide-y divide-stone-100">
                   {adminClasses.map((cls: any) => (
                     <tr
-                      key={cls.id}
+                      key={cls._id || cls.id}
                       className="hover:bg-stone-50 transition-colors"
                     >
                       <td className="px-8 py-5 text-sm font-bold text-stone-800">
-                        {cls.grade}
+                        <div className="flex flex-col">
+                          <span>{cls.grade}</span>
+                          {cls.isCompleted && (
+                            <span className="text-[8px] text-red-500 font-black uppercase tracking-tighter">
+                              Duration Complete
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-8 py-5">
                         <span
@@ -461,6 +506,9 @@ export default function AddClassPage() {
                       </td>
                       <td className="px-8 py-5 text-xs text-stone-600 font-medium">
                         {cls.examDate} at {cls.examTime}
+                      </td>
+                      <td className="px-8 py-5 text-xs text-stone-600 font-bold">
+                        {cls.sequenceOrder || 0}
                       </td>
                       <td className="px-8 py-5 text-right">
                         <button

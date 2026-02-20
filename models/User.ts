@@ -38,6 +38,30 @@ const UserSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    phone: {
+      type: String,
+      default: "",
+    },
+    address: {
+      type: String,
+      default: "",
+    },
+    city: {
+      type: String,
+      default: "",
+    },
+    state: {
+      type: String,
+      default: "",
+    },
+    pincode: {
+      type: String,
+      default: "",
+    },
+    amount: {
+      type: Number,
+      default: 0,
+    },
     savedTemples: [{ type: mongoose.Schema.Types.ObjectId, ref: "Temple" }],
   },
   { timestamps: true },

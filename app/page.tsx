@@ -16,8 +16,10 @@ import {
   X,
   User,
   ArrowRight,
+  ArrowLeft,
   Globe,
   Trash2,
+  Edit2,
   ChevronLeft,
   Star,
   Calendar,
@@ -26,8 +28,10 @@ import {
   Upload,
   ChevronRight,
   Megaphone,
+  Users,
 } from "lucide-react";
 import StatusModal from "@/components/StatusModal";
+import Navbar from "@/components/Navbar";
 
 // --- Interfaces ---
 
@@ -42,10 +46,11 @@ interface Review {
 
 interface Event {
   _id?: string;
-  id: number;
+  id?: number;
   title: string;
   date: string;
   description: string;
+  image?: string; // Added image field
 }
 
 interface Leader {
@@ -225,7 +230,6 @@ export default function App() {
   const [adminError, setAdminError] = useState("");
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [eventTempleId, setEventTempleId] = useState<string | null>(null);
-  3;
   const [examData, setExamData] = useState({
     name: "",
     center: "",
@@ -240,7 +244,23 @@ export default function App() {
     title: "",
     date: "",
     description: "",
+    image: "",
   });
+
+  const [activeAdminSubView, setActiveAdminSubView] = useState<
+    "temples" | "events"
+  >("temples");
+  const [editingEvent, setEditingEvent] = useState<{
+    templeId: string;
+    eventId: string;
+    eventData: any;
+  } | null>(null);
+  const [isEditEventModalOpen, setIsEditEventModalOpen] = useState(false);
+  const [selectedEventImage, setSelectedEventImage] = useState<string | null>(
+    null,
+  );
+
+  const [editingTempleId, setEditingTempleId] = useState<string | null>(null);
 
   const [modal, setModal] = useState<{
     isOpen: boolean;
@@ -257,7 +277,7 @@ export default function App() {
   const showModal = (
     status: "success" | "error" | "loading",
     title: string,
-    message: string
+    message: string,
   ) => {
     setModal({ isOpen: true, status, title, message });
     if (status !== "loading") {
@@ -270,11 +290,9 @@ export default function App() {
   const [filterState, setFilterState] = useState<string>("");
   const [filterCity, setFilterCity] = useState<string>("");
 
-  const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const [registrationSuccess, setRegistrationSuccess] =
     useState<boolean>(false);
 
-  const [adminClasses, setAdminClasses] = useState<any[]>([]);
 
   // Subadmin Registration State
   const [subadminData, setSubadminData] = useState({
@@ -286,19 +304,43 @@ export default function App() {
   const [isSubadminModalOpen, setIsSubadminModalOpen] = useState(false);
   const [subadminLoading, setSubadminLoading] = useState(false);
 
-  useEffect(() => {
-    const fetchTemples = async () => {
-      try {
-        const response = await fetch("/api/temples");
-        const data = await response.json();
-        if (data.success) {
-          setTemples(data.data);
-        }
-      } catch (err) {
-        console.error("Data load nahi ho paya:", err);
+  const fetchTemples = async () => {
+    try {
+      // Added cache-busting timestamp to bypass all possible caches
+      const res = await fetch(`/api/temples?t=${Date.now()}`, {
+        cache: "no-store",
+        headers: { Pragma: "no-cache", "Cache-Control": "no-cache" },
+      });
+      const data = await res.json();
+      if (data.success) {
+        console.log(
+          `[Fetch] Temples loaded: ${data.data.length}. Total events with images: ${data.data.flatMap((t: any) => t.events || []).filter((e: any) => e.image).length}`,
+        );
+        setTemples(data.data);
       }
-    };
+    } catch (err) {
+      console.error("[Fetch] Error:", err);
+    }
+  };
+
+  useEffect(() => {
     fetchTemples();
+
+    // Check for deep links (e.g., from Add Class/Broadcast back buttons)
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("view") === "admin") {
+      setView("admin");
+      // If we see this param, we assume they were in admin mode
+      setIsAdminLoggedIn(true);
+
+      // Select appropriate tab if provided
+      const tab = params.get("tab");
+      if (tab === "classes") {
+        setActiveTab("classes");
+      } else if (tab === "events") {
+        setActiveAdminSubView("events");
+      }
+    }
   }, []);
 
   // Registration Form State
@@ -361,7 +403,8 @@ export default function App() {
   );
 
   const selectedTemple = useMemo(
-    () => temples.find((t) => (t._id || t.id) === selectedTempleId),
+    () =>
+      temples.find((t) => String(t._id || t.id) === String(selectedTempleId)),
     [temples, selectedTempleId],
   );
 
@@ -384,22 +427,17 @@ export default function App() {
 
       const data = await response.json();
       if (data.success) {
-        showModal("success", "Leader Updated", "Leader details updated in Database!");
+        showModal(
+          "success",
+          "Leader Updated",
+          "Leader details updated in Database!",
+        );
       }
     } catch (err) {
       console.error("Update failed", err);
     }
   };
   // --- Handlers ---
-  // 2. Delete Function
-  const handleDeleteClass = (id: number) => {
-    if (window.confirm("Are you sure you want to delete this class?")) {
-      const updated = adminClasses.filter((c) => c.id !== id);
-      localStorage.setItem("all_classes", JSON.stringify(updated));
-      setAdminClasses(updated);
-    }
-  };
-
   // --- Admin Approval Handler ---
   const handleApprove = async (templeId: string | number | undefined) => {
     if (!templeId) {
@@ -424,23 +462,86 @@ export default function App() {
               : t;
           }),
         );
-        showModal("success", "Verified", "Temple has been successfully verified! ✅");
+        showModal(
+          "success",
+          "Verified",
+          "Temple has been successfully verified! ✅",
+        );
       } else {
         const errorData = await response.json();
-        showModal("error", "Verification Failed", errorData.message || "Failed to verify");
+        showModal(
+          "error",
+          "Verification Failed",
+          errorData.message || "Failed to verify",
+        );
       }
     } catch (error) {
       console.error("Verification failed:", error);
-      showModal("error", "System Error", "Failed to connect to verification server.");
+      showModal(
+        "error",
+        "System Error",
+        "Failed to connect to verification server.",
+      );
+    }
+  };
+  const handleDeleteTemple = async (templeId: string | number) => {
+    if (
+      !confirm(
+        "Are you sure you want to permanently delete this temple? This cannot be undone.",
+      )
+    )
+      return;
+
+    showModal("loading", "Deleting...", "Removing temple from database");
+    try {
+      // Explicitly convert to string and remove any whitespace
+      const idStr = String(templeId).trim();
+      const response = await fetch(`/api/temples/${idStr}`, {
+        method: "DELETE",
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        showModal("success", "Deleted", "Temple removed successfully! 🗑️");
+        fetchTemples();
+      } else {
+        showModal("error", "Failed", data.message || "Delete failed");
+      }
+    } catch (err) {
+      console.error("Delete Temple Error:", err);
+      showModal("error", "Error", "Connection failed.");
     }
   };
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validation for 10-digit phone numbers
+    const invalidLeader = formData.leaders.find((l) => l.phone.length !== 10);
+    if (invalidLeader) {
+      showModal(
+        "error",
+        "Invalid Phone",
+        `Phone number for ${invalidLeader.name || "member"} must be exactly 10 digits.`,
+      );
+      return;
+    }
+
+    const isEditing = !!editingTempleId;
+    showModal(
+      "loading",
+      isEditing ? "Updating..." : "Registering...",
+      isEditing ? "Saving temple changes" : "Sending registration request",
+    );
+
     try {
-      const response = await fetch("/api/temples/register", {
-        method: "POST",
+      const url = isEditing
+        ? `/api/temples/${editingTempleId}`
+        : "/api/temples/register";
+      const method = isEditing ? "PUT" : "POST";
+
+      const response = await fetch(url, {
+        method: method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
@@ -448,27 +549,45 @@ export default function App() {
       const data = await response.json();
 
       if (data.success) {
-        setRegistrationSuccess(true);
+        if (!isEditing) {
+          setRegistrationSuccess(true);
+        } else {
+          showModal(
+            "success",
+            "Updated",
+            "Temple details updated successfully! ✅",
+          );
+        }
 
-        setTimeout(() => {
-          setRegistrationSuccess(false);
-          setView("home");
-          setFormData({
-            name: "",
-            country: "India",
-            state: "",
-            city: "",
-            locality: "",
-            pincode: "",
-            images: [],
-            leaders: [{ name: "", designation: "", phone: "", email: "" }],
-          });
-        }, 3000);
+        setTimeout(
+          () => {
+            if (!isEditing) setRegistrationSuccess(false);
+            setView("home");
+            setEditingTempleId(null);
+            setFormData({
+              name: "",
+              country: "India",
+              state: "",
+              city: "",
+              locality: "",
+              pincode: "",
+              images: [],
+              leaders: [{ name: "", designation: "", phone: "", email: "" }],
+            });
+            fetchTemples();
+          },
+          isEditing ? 1500 : 3000,
+        );
       } else {
-        showModal("error", "Registration Failed", data.message || "Please check your inputs.");
+        showModal(
+          "error",
+          isEditing ? "Update Failed" : "Registration Failed",
+          data.message || "Please check your inputs.",
+        );
       }
     } catch (err) {
       console.error("Server error:", err);
+      showModal("error", "Error", "Connection failed.");
     }
   };
 
@@ -482,18 +601,183 @@ export default function App() {
           event: eventData,
         }),
       });
-
       const data = await response.json();
 
-      if (data.success) {
-        showModal("success", "Event Added", "Event successfully added to calendar! 📅");
+      if (response.ok && data.success) {
+        // Log image success for debugging
+        console.log(
+          `Event added successfully with image: ${data.debugInfo?.savedImageLength} bytes`,
+        );
 
+        showModal(
+          "success",
+          "Event Added",
+          `Event successfully added! (Image: ${data.debugInfo?.savedImageLength || 0} bytes saved) 📅`,
+        );
+
+        const updatedRes = await fetch("/api/temples");
+        const updatedData = await updatedRes.json();
+        setTemples(updatedData.data);
+        setEventData({ title: "", date: "", description: "", image: "" });
+      } else {
+        console.error("Failed to add event:", data.message);
+        showModal(
+          "error",
+          "Failed to Add",
+          data.message ||
+          "Something went wrong. Image might be too large (max 4.5MB).",
+        );
+      }
+    } catch (err) {
+      console.error("Event not added :", err);
+      showModal(
+        "error",
+        "Error",
+        "Connection failed. Field size might be too large.",
+      );
+    }
+  };
+
+  const handleUpdateEvent = async (
+    templeId: string,
+    eventId: string,
+    eventData: any,
+  ) => {
+    try {
+      const response = await fetch("/api/temples/events", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          templeId,
+          eventId,
+          eventData,
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        const savedSize = data.debugInfo?.savedImageLength || 0;
+        console.log(`[Update] Event saved. Image size: ${savedSize} bytes`);
+
+        showModal(
+          "success",
+          "Updated",
+          `Event details and image saved! (${Math.round(savedSize / 1024)}KB) ✅`,
+        );
+
+        // Immediate fetch with a small delay to ensure DB propagation
+        setTimeout(async () => {
+          await fetchTemples();
+        }, 500);
+      } else {
+        console.error("[Update] Failed:", data.message);
+        showModal(
+          "error",
+          "Update Failed",
+          data.message || "Failed to save changes. Image might be too large.",
+        );
+      }
+    } catch (err) {
+      console.error("Update failed:", err);
+      showModal("error", "Error", "Failed to reach server. Check data size.");
+    }
+  };
+
+  const handleDeleteEvent = async (templeId: string, eventId: string) => {
+    if (!confirm("Are you sure you want to delete this event?")) return;
+
+    try {
+      const response = await fetch("/api/temples/events", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          templeId,
+          eventId,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        showModal("success", "Deleted", "Event removed successfully! 🗑️");
         const updatedRes = await fetch("/api/temples");
         const updatedData = await updatedRes.json();
         setTemples(updatedData.data);
       }
     } catch (err) {
-      console.error("Event not added :", err);
+      console.error("Delete failed:", err);
+    }
+  };
+
+  const handleImageUpload = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    type: "event" | "edit-event" | "temple-register",
+  ) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Image Compression Logic
+      const reader = new FileReader();
+      reader.onload = (event: any) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const MAX_WIDTH = 600; // Aggressive limit
+          const MAX_HEIGHT = 600;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx?.drawImage(img, 0, 0, width, height);
+
+          // Increased compression (0.5 q)
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.5);
+          const sizeKB = Math.round((dataUrl.length * 0.75) / 1024);
+          console.log(`Compressed image size: ${sizeKB} KB`);
+
+          if (type === "event") {
+            setEventData((prev) => ({ ...prev, image: dataUrl }));
+          } else if (type === "edit-event") {
+            setEditingEvent((prev: any) => ({
+              ...prev,
+              eventData: { ...prev.eventData, image: dataUrl },
+            }));
+          } else if (type === "temple-register") {
+            setFormData((prev) => ({
+              ...prev,
+              images: [...prev.images, dataUrl],
+            }));
+          }
+        };
+        img.onerror = () => {
+          console.error("Compression failed: Image could not be loaded");
+          showModal(
+            "error",
+            "Image Error",
+            "Failed to process the chosen image.",
+          );
+        };
+        img.src = event.target.result;
+      };
+      reader.onerror = () => {
+        console.error("File reading failed");
+        showModal("error", "File Error", "Failed to read the file.");
+      };
+      reader.readAsDataURL(file);
+      // Clear value to allow re-selecting same file
+      e.target.value = "";
     }
   };
 
@@ -524,7 +808,11 @@ export default function App() {
         setTemples(updatedData.data);
 
         setNewReview({ user: "", rating: 5, comment: "" });
-        showModal("success", "Review Published", "Your feedback has been posted. Thank you! ⭐");
+        showModal(
+          "success",
+          "Review Published",
+          "Your feedback has been posted. Thank you! ⭐",
+        );
       }
     } catch (err) {
       console.error("Review failed:", err);
@@ -542,11 +830,15 @@ export default function App() {
   };
 
   const updateLeader = (index: number, field: keyof Leader, value: string) => {
+    let finalValue = value;
+    if (field === "phone") {
+      finalValue = value.replace(/\D/g, "").slice(0, 10);
+    }
     setFormData((prev) => {
       const updatedLeaders = [...prev.leaders];
       updatedLeaders[index] = {
         ...updatedLeaders[index],
-        [field]: value,
+        [field]: finalValue,
       };
 
       return {
@@ -581,7 +873,11 @@ export default function App() {
       const data = await response.json();
 
       if (data.success) {
-        showModal("success", "Account Created", "Admin account created successfully! You can login now.");
+        showModal(
+          "success",
+          "Account Created",
+          "Admin account created successfully! You can login now.",
+        );
 
         // setAdminUsername("");
         // setAdminPassword("");
@@ -615,7 +911,11 @@ export default function App() {
       const data = await response.json();
 
       if (data.success) {
-        showModal("success", "Login Successful", "Welcome to Admin Dashboard! Authenticating...");
+        showModal(
+          "success",
+          "Login Successful",
+          "Welcome to Admin Dashboard! Authenticating...",
+        );
         setTimeout(() => {
           setIsAdminLoggedIn(true);
         }, 1500);
@@ -641,7 +941,11 @@ export default function App() {
       const data = await response.json();
 
       if (data.success) {
-        showModal("success", "Registered", "Sub-Admin registered successfully! Redirection in progress...");
+        showModal(
+          "success",
+          "Registered",
+          "Sub-Admin registered successfully! Redirection in progress...",
+        );
         setIsSubadminModalOpen(false);
         setSubadminData({
           name: "",
@@ -650,7 +954,11 @@ export default function App() {
           templeName: "",
         });
       } else {
-        showModal("error", "Failed", data.message || "Registration encountered an error.");
+        showModal(
+          "error",
+          "Failed",
+          data.message || "Registration encountered an error.",
+        );
       }
     } catch (err) {
       console.error("Subadmin Register Error:", err);
@@ -661,117 +969,17 @@ export default function App() {
   };
 
   const addImageToForm = () => {
-    // Simulating upload by picking a random image
-    const randomImg =
-      TEMPLE_IMAGES[Math.floor(Math.random() * TEMPLE_IMAGES.length)];
-    setFormData((prev) => ({ ...prev, images: [...prev.images, randomImg] }));
+    document.getElementById("temple-register-photo-input")?.click();
   };
 
   return (
     <div className="min-h-screen bg-stone-50 text-stone-900 font-sans selection:bg-amber-100 selection:text-amber-900">
-      {/* Navbar */}
-      <nav className="bg-white/80 backdrop-blur-md border-b sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <div
-              className="flex items-center cursor-pointer group"
-              onClick={() => {
-                setView("home");
-                setSelectedTempleId(null);
-              }}
-            >
-              <img
-                src="https://amangupta.f24tech.com/jainconnect.png"
-                alt="Logo"
-                className="w-10 h-10 object-contain mr-3 group-hover:scale-110 transition-transform"
-              />
-              <span className="text-xl font-bold text-stone-800 tracking-tight">
-                JainMandir<span className="text-amber-600">Connect</span>
-              </span>
-            </div>
-
-            <div className="hidden md:flex space-x-6 items-center">
-              <button
-                onClick={() => {
-                  setView("home");
-                  setSelectedTempleId(null);
-                }}
-                className={`text-sm font-semibold transition-colors ${view === "home" && !selectedTempleId ? "text-amber-600" : "text-stone-500 hover:text-amber-600"}`}
-              >
-                Directory
-              </button>
-              <button
-                onClick={() => setView("register")}
-                className="bg-amber-600 text-white px-6 py-2.5 rounded-full text-sm font-bold hover:bg-amber-700 hover:shadow-lg transition-all flex items-center gap-2"
-              >
-                <PlusCircle size={18} /> Register Temple
-              </button>
-              <button
-                onClick={() => setView("admin")}
-                className={`p-2 rounded-lg transition-colors ${view === "admin" ? "bg-amber-100 text-amber-700" : "text-stone-400 hover:text-stone-800 hover:bg-stone-100"}`}
-                title="Admin Panel"
-              >
-                <User size={22} />
-              </button>
-              {/* Role */}
-              <button
-                onClick={() => router.push("/auth-choice")}
-                className={`p-2 rounded-lg transition-colors ${view === "admin" ? "bg-amber-100 text-amber-700" : "text-stone-400 hover:text-stone-800 hover:bg-stone-100"}`}
-                title="Select Role"
-              >
-                <User size={22} />
-              </button>
-            </div>
-
-            <div className="md:hidden flex items-center gap-2">
-              <button
-                onClick={() => router.push("/auth-choice")}
-                className="p-2 text-stone-600 hover:bg-stone-100 rounded-lg"
-              >
-                <User size={22} />
-              </button>
-              <button
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="p-2 text-stone-600 hover:bg-stone-100 rounded-lg"
-              >
-                {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {isMenuOpen && (
-          <div className="md:hidden bg-white border-b px-4 py-4 space-y-2 animate-in slide-in-from-top duration-200">
-            <button
-              onClick={() => {
-                setView("home");
-                setIsMenuOpen(false);
-              }}
-              className="block w-full text-left px-4 py-3 text-stone-600 font-medium rounded-xl hover:bg-stone-50"
-            >
-              Directory
-            </button>
-            <button
-              onClick={() => {
-                setView("register");
-                setIsMenuOpen(false);
-              }}
-              className="block w-full text-left px-4 py-3 text-amber-600 font-bold rounded-xl hover:bg-amber-50"
-            >
-              Register Temple
-            </button>
-            {/* <button
-              onClick={() => {
-                setView("admin");
-                setIsMenuOpen(false);
-              }}
-              className="block w-full text-left px-4 py-3 text-stone-600 font-medium rounded-xl hover:bg-stone-50"
-            >
-              Admin Panel
-            </button> */}
-          </div>
-        )}
-      </nav>
+      <Navbar
+        view={view}
+        setView={setView}
+        selectedTempleId={selectedTempleId}
+        setSelectedTempleId={setSelectedTempleId}
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
         {/* VIEW: DIRECTORY */}
@@ -899,7 +1107,7 @@ export default function App() {
                         ID:
                       </span>
                       {/* Displays the sequential ID from database or fallback to index */}
-                      {temple.displayId || String(index + 1).padStart(2, '0')}
+                      {temple.displayId || String(index + 1).padStart(2, "0")}
                     </div>
 
                     <div className="pt-4 border-t border-stone-100 flex items-center justify-between">
@@ -1212,12 +1420,68 @@ export default function App() {
 
                           {/* Event Content */}
                           <div className="flex-1">
-                            <p className="font-bold text-stone-900 text-sm">
-                              {event.title}
-                            </p>
-                            <p className="text-xs text-stone-500 mt-1 leading-relaxed">
-                              {event.description}
-                            </p>
+                            <div className="flex gap-4">
+                              <div className="flex-1">
+                                <p className="font-bold text-stone-900 text-sm">
+                                  {event.title}
+                                </p>
+                                <p className="text-xs text-stone-500 mt-1 leading-relaxed">
+                                  {event.description}
+                                </p>
+                              </div>
+                              {event.image ? (
+                                <div
+                                  className="w-20 h-20 rounded-xl overflow-hidden shadow-sm shrink-0 border border-stone-100 cursor-zoom-in group/img relative"
+                                  onClick={() =>
+                                    setSelectedEventImage(event.image || null)
+                                  }
+                                >
+                                  <img
+                                    src={event.image}
+                                    className="w-full h-full object-cover"
+                                    alt={event.title}
+                                    title={`Image Data: ${event.image.substring(0, 30)}... (Length: ${event.image.length})`}
+                                    onError={(e) => {
+                                      const target = e.currentTarget;
+                                      const parent = target.parentElement;
+                                      if (
+                                        parent &&
+                                        !parent.querySelector(
+                                          ".img-error-label",
+                                        )
+                                      ) {
+                                        target.style.opacity = "0.3";
+                                        const errIcon =
+                                          document.createElement("div");
+                                        errIcon.className =
+                                          "img-error-label absolute inset-0 flex flex-col items-center justify-center bg-stone-100/80 text-stone-500";
+                                        errIcon.innerHTML = `
+                                          <span class="text-[10px] font-black uppercase">Load Error</span>
+                                          <button class="text-[8px] underline px-2 py-1 mt-1 hover:text-amber-600 transition" onclick="const img = this.closest('.group\\/img').querySelector('img'); img.src = img.src.split('?retry=')[0] + '?retry=' + Date.now(); this.parentElement.remove();">Retry</button>
+                                        `;
+                                        parent.appendChild(errIcon);
+                                      }
+                                    }}
+                                  />
+                                  <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 transition-colors flex items-center justify-center pointer-events-none">
+                                    <ImageIcon
+                                      size={16}
+                                      className="text-white opacity-0 group-hover/img:opacity-100 transition-opacity"
+                                    />
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="w-20 h-20 rounded-xl bg-stone-50 border border-dashed border-stone-200 flex flex-col items-center justify-center shrink-0">
+                                  <ImageIcon
+                                    size={18}
+                                    className="text-stone-300"
+                                  />
+                                  <span className="text-[8px] font-black uppercase text-stone-300 mt-1">
+                                    No Image
+                                  </span>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -1314,10 +1578,14 @@ export default function App() {
               <div className="bg-white rounded-[2rem] shadow-xl border border-stone-100 p-8 md:p-12">
                 <div className="mb-10 text-center">
                   <h2 className="text-3xl font-extrabold text-stone-900">
-                    Temple Registration
+                    {editingTempleId
+                      ? "Edit Temple Details"
+                      : "Temple Registration"}
                   </h2>
                   <p className="text-stone-500 mt-2">
-                    Submit your temple's details for community verification.
+                    {editingTempleId
+                      ? "Update your temple's information for the community."
+                      : "Submit your temple's details for community verification."}
                   </p>
                 </div>
 
@@ -1444,6 +1712,15 @@ export default function App() {
                         Photos ({formData.images.length})
                       </label>
                       <div className="flex gap-4 items-center">
+                        <input
+                          id="temple-register-photo-input"
+                          type="file"
+                          className="hidden"
+                          accept="image/*"
+                          onChange={(e) =>
+                            handleImageUpload(e, "temple-register")
+                          }
+                        />
                         <button
                           type="button"
                           onClick={addImageToForm}
@@ -1532,9 +1809,9 @@ export default function App() {
                             >
                               <option value="">Select Designation</option>
                               <option value="Adyaksh">President</option>
-                              <option value="Upadyaksh">
+                              {/* <option value="Upadyaksh">
                                 Upadyaksh (V. President)
-                              </option>
+                              </option> */}
                               {/* <option value="Mahamantri">
                                 Mahamantri (Gen. Sec.)
                               </option>
@@ -1547,7 +1824,9 @@ export default function App() {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <input
                               required
-                              placeholder="Phone Number"
+                              type="tel"
+                              maxLength={10}
+                              placeholder="Phone Number (10 Digits)"
                               className="w-full px-4 py-3 bg-white border border-stone-200 rounded-xl focus:ring-2 focus:ring-amber-500 outline-none text-sm shadow-sm"
                               value={leader.phone}
                               onChange={(e) =>
@@ -1586,12 +1865,43 @@ export default function App() {
                     </div>
                   </div>
 
-                  <button
-                    type="submit"
-                    className="w-full bg-amber-600 text-white py-5 rounded-2xl font-bold text-lg hover:bg-amber-700 transition shadow-xl shadow-amber-200 flex items-center justify-center gap-3"
-                  >
-                    Submit Registration Request <ArrowRight size={20} />
-                  </button>
+                  <div className="flex gap-4">
+                    {editingTempleId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setView("home");
+                          setEditingTempleId(null);
+                          setFormData({
+                            name: "",
+                            country: "India",
+                            state: "",
+                            city: "",
+                            locality: "",
+                            pincode: "",
+                            images: [],
+                            leaders: [
+                              {
+                                name: "",
+                                designation: "",
+                                phone: "",
+                                email: "",
+                              },
+                            ],
+                          });
+                        }}
+                        className="flex-1 px-8 py-4 border-2 border-stone-100 text-stone-600 rounded-2xl font-bold hover:bg-stone-50 transition active:scale-95"
+                      >
+                        Cancel Edit
+                      </button>
+                    )}
+                    <button
+                      type="submit"
+                      className="flex-1 px-8 py-4 bg-amber-600 text-white rounded-2xl font-bold hover:bg-amber-700 shadow-xl shadow-stone-200 transition active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      {editingTempleId ? "Save Changes" : "Submit Registration"}
+                    </button>
+                  </div>
                 </form>
               </div>
             )}
@@ -1680,190 +1990,468 @@ export default function App() {
               </div>
             ) : (
               <>
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                {/* Header Section */}
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8">
                   <div>
-                    <h2 className="text-4xl font-extrabold text-stone-900">
+                    <h2 className="text-4xl font-black text-stone-900 tracking-tight">
                       Admin Console
                     </h2>
-                    <p className="text-stone-500 mt-1">
+                    <p className="text-stone-500 mt-1 italic">
                       Reviewing submissions for the global directory.
                     </p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex gap-2">
-                      <div className="px-5 py-2.5 bg-amber-50 rounded-xl border border-amber-100 text-center">
-                        <span className="text-[10px] text-amber-600 font-bold uppercase block tracking-wider">
-                          Pending
-                        </span>
-                        <span className="text-2xl font-black text-amber-900 leading-none">
-                          {pendingTemples.length}
-                        </span>
-                      </div>
-                      <div className="px-5 py-2.5 bg-green-50 rounded-xl border border-green-100 text-center">
-                        <span className="text-[10px] text-green-600 font-bold uppercase block tracking-wider">
-                          Live
-                        </span>
-                        <span className="text-2xl font-black text-green-900 leading-none">
-                          {
-                            temples.filter((t) => t.status === "verified")
-                              .length
-                          }
-                        </span>
-                      </div>
-                      {/* NEW: Classes Box */}
-                      <div
-                        onClick={() =>
-                          (window.location.href = "/admin/add-class")
-                        }
-                        className="px-8 py-2.5 bg-orange-50 rounded-xl border border-orange-100 text-center cursor-pointer hover:bg-orange-100 transition-all active:scale-95 shadow-sm"
-                      >
-                        <span className="text-[10px] text-orange-600 font-bold uppercase block tracking-wider">
-                          Classes
-                        </span>
-                        <span className="text-sm font-bold text-orange-900 block mt-1">
-                          Manage & Add
-                        </span>
-                      </div>
-                      {/* NEW: Subadmin Registration Box */}
-                      <div
-                        onClick={() => setIsSubadminModalOpen(true)}
-                        className="px-8 py-2.5 bg-rose-50 rounded-xl border border-rose-100 text-center cursor-pointer hover:bg-rose-100 transition-all active:scale-95 shadow-sm"
-                      >
-                        <span className="text-[10px] text-rose-600 font-bold uppercase block tracking-wider">
-                          Subadmins
-                        </span>
-                        <span className="text-sm font-bold text-rose-900 block mt-1">
-                          Register New
-                        </span>
-                      </div>
-                      {/* Notification (Broadcast) Box - Now matching Subadmin style */}
-                      <div
-                        onClick={() =>
-                          (window.location.href = "/admin/notifications")
-                        }
-                        className="px-8 py-2.5 bg-amber-50 rounded-xl border border-amber-100 text-center cursor-pointer hover:bg-amber-100 transition-all active:scale-95 shadow-sm group"
-                      >
-                        <span className="text-[10px] text-amber-600 font-bold uppercase block tracking-wider">
-                          Broadcast
-                        </span>
-                        <div className="flex items-center justify-center gap-2 mt-1">
-                          <Megaphone
-                            size={14}
-                            className="text-amber-600 group-hover:rotate-12 transition-transform"
-                          />
-                          <span className="text-sm font-bold text-amber-900">
-                            Notifications
-                          </span>
-                        </div>
-                      </div>{" "}
+                  <button
+                    onClick={() => setIsAdminLoggedIn(false)}
+                    className="px-6 py-2.5 bg-stone-100 text-stone-600 font-bold rounded-xl hover:bg-stone-200 transition-all active:scale-95 shadow-sm border border-stone-200"
+                  >
+                    Logout
+                  </button>
+                </div>
+
+                {/* Stats & Controls Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
+                  {/* Stats: Pending */}
+                  <div className="px-5 py-3 bg-amber-50 rounded-2xl border border-amber-100 text-center shadow-sm">
+                    <span className="text-[10px] text-amber-600 font-bold uppercase block tracking-wider mb-1">
+                      Pending
+                    </span>
+                    <span className="text-3xl font-black text-amber-900 leading-none">
+                      {pendingTemples.length}
+                    </span>
+                  </div>
+
+                  {/* Stats: Live */}
+                  <div className="px-5 py-3 bg-green-50 rounded-2xl border border-green-100 text-center shadow-sm">
+                    <span className="text-[10px] text-green-600 font-bold uppercase block tracking-wider mb-1">
+                      Live
+                    </span>
+                    <span className="text-3xl font-black text-green-900 leading-none">
+                      {temples.filter((t) => t.status === "verified").length}
+                    </span>
+                  </div>
+
+                  {/* Action: Classes */}
+                  <div
+                    onClick={() => (window.location.href = "/admin/add-class")}
+                    className="px-5 py-3 bg-orange-50 rounded-2xl border border-orange-100 text-center cursor-pointer hover:bg-orange-100 transition-all active:scale-95 shadow-sm group"
+                  >
+                    <span className="text-[10px] text-orange-600 font-bold uppercase block tracking-wider mb-1">
+                      Classes
+                    </span>
+                    <div className="flex items-center justify-center gap-2">
+                      <Users size={14} className="text-orange-600" />
+                      <span className="text-sm font-bold text-orange-900">
+                        Manage & Add
+                      </span>
                     </div>
-                    <button
-                      onClick={() => setIsAdminLoggedIn(false)}
-                      className="px-5 py-2.5 bg-stone-200 rounded-xl text-stone-600 font-bold hover:bg-stone-300"
+                  </div>
+
+                  {/* Action: Subadmins */}
+                  <div
+                    onClick={() => setIsSubadminModalOpen(true)}
+                    className="px-5 py-3 bg-rose-50 rounded-2xl border border-rose-100 text-center cursor-pointer hover:bg-rose-100 transition-all active:scale-95 shadow-sm group"
+                  >
+                    <span className="text-[10px] text-rose-600 font-bold uppercase block tracking-wider mb-1">
+                      Subadmins
+                    </span>
+                    <div className="flex items-center justify-center gap-2">
+                      <User size={14} className="text-rose-600" />
+                      <span className="text-sm font-bold text-rose-900">
+                        Register New
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Action: Broadcast/Notifications */}
+                  <div
+                    onClick={() =>
+                      (window.location.href = "/admin/notifications")
+                    }
+                    className="px-5 py-3 bg-amber-50 rounded-2xl border border-amber-100 text-center cursor-pointer hover:bg-amber-100 transition-all active:scale-95 shadow-sm group"
+                  >
+                    <span className="text-[10px] text-amber-600 font-bold uppercase block tracking-wider mb-1">
+                      Broadcast
+                    </span>
+                    <div className="flex items-center justify-center gap-2">
+                      <Megaphone
+                        size={14}
+                        className="text-amber-600 group-hover:rotate-12 transition-transform"
+                      />
+                      <span className="text-sm font-bold text-amber-900">
+                        Notifications
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Action: Events */}
+                  <div
+                    onClick={() => setActiveAdminSubView("events")}
+                    className={`px-5 py-3 rounded-2xl border text-center cursor-pointer transition-all active:scale-95 shadow-sm group ${activeAdminSubView === "events"
+                      ? "bg-amber-100 border-amber-200"
+                      : "bg-blue-50 border-blue-100 hover:bg-blue-100"
+                      }`}
+                  >
+                    <span
+                      className={`text-[10px] font-bold uppercase block tracking-wider mb-1 ${activeAdminSubView === "events"
+                        ? "text-amber-600"
+                        : "text-blue-600"
+                        }`}
                     >
-                      Logout
-                    </button>
+                      Events
+                    </span>
+                    <div className="flex items-center justify-center gap-2">
+                      <Calendar
+                        size={14}
+                        className={
+                          activeAdminSubView === "events"
+                            ? "text-amber-600"
+                            : "text-blue-600"
+                        }
+                      />
+                      <span
+                        className={`text-sm font-bold ${activeAdminSubView === "events"
+                          ? "text-amber-900"
+                          : "text-blue-900"
+                          }`}
+                      >
+                        Manage
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="bg-white rounded-[2rem] shadow-sm border border-stone-100 overflow-hidden">
+                <div className="bg-white rounded-[2rem] shadow-xl border border-stone-100 overflow-hidden">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                      <thead className="bg-stone-50/50 border-b border-stone-100">
-                        <tr>
-                          <th className="px-8 py-5 text-[10px] font-bold text-stone-400 uppercase tracking-widest">
-                            Temple Details
-                          </th>
-                          <th className="px-8 py-5 text-[10px] font-bold text-stone-400 uppercase tracking-widest">
-                            Location
-                          </th>
-                          <th className="px-8 py-5 text-[10px] font-bold text-stone-400 uppercase tracking-widest">
-                            Status
-                          </th>
-                          <th className="px-8 py-5 text-[10px] font-bold text-stone-400 uppercase tracking-widest">
-                            Events
-                          </th>
-                          <th className="px-8 py-5 text-[10px] font-bold text-stone-400 uppercase tracking-widest text-right">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-stone-100">
-                        {temples.map((temple, index) => (
-                          <tr
-                            key={temple._id || temple.id}
-                            className="hover:bg-stone-50/40 transition-colors group"
-                          >
-                            <td className="px-8 py-6 ">
-                              <div className="flex items-center gap-4">
-                                <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-sm shrink-0">
-                                  <img
-                                    src={temple.images[0]}
-                                    className="w-full h-full object-cover"
-                                  />
-                                </div>
-                                <div className="min-w-0">
-                                  <p className="font-bold text-stone-800 text-base truncate">
-                                    {temple.name}
-                                  </p>
-                                  <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wide">
-                                    ID: {temple.displayId || String(index + 1).padStart(2, '0')}
-                                  </p>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-8 py-6">
-                              <p className="text-sm font-semibold text-stone-700">
-                                {temple.city}, {temple.state}
-                              </p>
-                              <p className="text-xs text-stone-400">
-                                {temple.country}
-                              </p>
-                            </td>
-                            <td className="px-8 py-6">
-                              {temple.status === "verified" ? (
-                                <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-green-100 text-green-800">
-                                  Verified
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-amber-100 text-amber-800">
-                                  Review Pending
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-8 py-6 text-right">
-                              {temple.status === "pending" && (
-                                <button
-                                  onClick={() => {
-                                    const id = temple._id || temple.id;
-                                    if (id) {
-                                      handleApprove(String(id));
-                                    }
-                                  }}
-                                  className="text-amber-600 font-bold text-xs hover:underline bg-amber-50 px-3 py-1.5 rounded-lg"
-                                >
-                                  Approve
-                                </button>
-                              )}
-
-                              {/* Verified temples ke liye "Add Event" button */}
-                              {temple.status === "verified" && (
-                                <button
-                                  onClick={() => {
-                                    const id = temple._id || temple.id;
-                                    setEventTempleId(id ? String(id) : null);
-                                    setIsEventModalOpen(true);
-                                  }}
-                                  className="bg-amber-50 text-amber-700 font-bold text-xs px-3 py-1.5 rounded-lg hover:bg-amber-100 transition flex items-center gap-1"
-                                >
-                                  <span className="text-sm">+</span> Event
-                                </button>
-                              )}
-                            </td>
+                    {activeAdminSubView === "temples" ? (
+                      <table className="w-full text-left">
+                        <thead className="bg-stone-50/50 border-b border-stone-100">
+                          <tr>
+                            <th className="px-8 py-5 text-[10px] font-bold text-stone-400 uppercase tracking-widest">
+                              Temple Details
+                            </th>
+                            <th className="px-8 py-5 text-[10px] font-bold text-stone-400 uppercase tracking-widest">
+                              Location
+                            </th>
+                            <th className="px-8 py-5 text-[10px] font-bold text-stone-400 uppercase tracking-widest">
+                              Status
+                            </th>
+                            <th className="px-8 py-5 text-[10px] font-bold text-stone-400 uppercase tracking-widest">
+                              Actions
+                            </th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-stone-100">
+                          {temples.map((temple, index) => (
+                            <tr
+                              key={temple._id || temple.id}
+                              className="hover:bg-stone-50/40 transition-colors group"
+                            >
+                              <td className="px-8 py-6 ">
+                                <div className="flex items-center gap-4">
+                                  <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-sm shrink-0">
+                                    <img
+                                      src={temple.images[0]}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="font-bold text-stone-800 text-base truncate">
+                                      {temple.name}
+                                    </p>
+                                    <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wide">
+                                      ID:{" "}
+                                      {temple.displayId ||
+                                        String(index + 1).padStart(2, "0")}
+                                    </p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-8 py-6">
+                                <p className="text-sm font-semibold text-stone-700">
+                                  {temple.city}, {temple.state}
+                                </p>
+                                <p className="text-xs text-stone-400">
+                                  {temple.country}
+                                </p>
+                              </td>
+                              <td className="px-8 py-6">
+                                {temple.status === "verified" ? (
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-green-100 text-green-800">
+                                    Verified
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-amber-100 text-amber-800">
+                                    Review Pending
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-8 py-6 text-right">
+                                {temple.status === "pending" && (
+                                  <button
+                                    onClick={() => {
+                                      const id = temple._id || temple.id;
+                                      if (id) {
+                                        handleApprove(String(id));
+                                      }
+                                    }}
+                                    className="text-amber-600 font-bold text-xs hover:underline bg-amber-50 px-3 py-1.5 rounded-lg"
+                                  >
+                                    Approve
+                                  </button>
+                                )}
+
+                                {temple.status === "verified" && (
+                                  <button
+                                    onClick={() => {
+                                      const id = temple._id || temple.id;
+                                      setEventTempleId(id ? String(id) : null);
+                                      setIsEventModalOpen(true);
+                                    }}
+                                    className="bg-amber-50 text-amber-700 font-bold text-xs px-3 py-1.5 rounded-lg hover:bg-amber-100 transition flex items-center gap-1 ml-auto"
+                                  >
+                                    <span className="text-sm">+</span> Event
+                                  </button>
+                                )}
+
+                                <div className="flex gap-2 ml-auto mt-2">
+                                  <button
+                                    onClick={() => {
+                                      setEditingTempleId(
+                                        String(temple._id || temple.id),
+                                      );
+                                      setFormData({
+                                        name: temple.name,
+                                        country: temple.country || "India",
+                                        state: temple.state,
+                                        city: temple.city,
+                                        locality: temple.locality || "",
+                                        pincode: temple.pincode || "",
+                                        images: temple.images || [],
+                                        leaders: temple.leaders || [
+                                          {
+                                            name: "",
+                                            designation: "",
+                                            phone: "",
+                                            email: "",
+                                          },
+                                        ],
+                                      });
+                                      setView("register");
+                                    }}
+                                    className="bg-blue-50 text-blue-700 font-bold text-[10px] px-2.5 py-1.5 rounded-lg hover:bg-blue-100 transition uppercase tracking-wider"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      const id = temple._id || temple.id;
+                                      if (id) handleDeleteTemple(id);
+                                    }}
+                                    className="bg-red-50 text-red-700 font-bold text-[10px] px-2.5 py-1.5 rounded-lg hover:bg-red-100 transition uppercase tracking-wider"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <div className="p-8">
+                        <div className="flex justify-between items-center mb-6">
+                          <h2 className="text-2xl font-black text-stone-900 uppercase tracking-tight">
+                            Manage Events
+                          </h2>
+                          <button
+                            onClick={() => setActiveAdminSubView("temples")}
+                            className="text-stone-500 hover:text-stone-800 text-sm font-bold flex items-center gap-1"
+                          >
+                            <ArrowLeft size={16} /> Back
+                          </button>
+                          <button
+                            onClick={() => {
+                              showModal(
+                                "loading",
+                                "Synchronizing...",
+                                "Fetching latest data from server",
+                              );
+                              fetchTemples().then(() => {
+                                setTimeout(
+                                  () =>
+                                    showModal(
+                                      "success",
+                                      "Synced",
+                                      "Data refreshed! ✅",
+                                    ),
+                                  500,
+                                );
+                              });
+                            }}
+                            className="text-amber-600 hover:text-amber-700 text-sm font-bold flex items-center gap-1 bg-amber-50 px-3 py-1 rounded-lg transition"
+                          >
+                            <History size={14} /> Force Refresh
+                          </button>
+                        </div>
+                        <div className="overflow-hidden border border-stone-100 rounded-2xl">
+                          <table className="w-full text-left">
+                            <thead className="bg-stone-50/50 border-b border-stone-100">
+                              <tr>
+                                <th className="px-6 py-4 text-[10px] font-bold text-stone-400 uppercase tracking-widest">
+                                  Event
+                                </th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-stone-400 uppercase tracking-widest">
+                                  Temple
+                                </th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-stone-400 uppercase tracking-widest">
+                                  Date
+                                </th>
+                                <th className="px-6 py-4 text-[10px] font-bold text-stone-400 uppercase tracking-widest">
+                                  Actions
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-stone-100">
+                              {temples
+                                .filter((t) => t.events?.length > 0)
+                                .flatMap((temple) =>
+                                  temple.events.map((event: any) => ({
+                                    ...event,
+                                    templeName: temple.name,
+                                    tId: temple._id,
+                                  })),
+                                )
+                                .map((event: any) => (
+                                  <tr
+                                    key={event._id}
+                                    className="hover:bg-stone-50/40 transition-colors"
+                                  >
+                                    <td className="px-6 py-4">
+                                      <div className="flex items-center gap-3">
+                                        {event.image ? (
+                                          <div
+                                            className="w-12 h-12 rounded-lg overflow-hidden border border-stone-100 shrink-0 cursor-zoom-in relative group/admin-img"
+                                            onClick={() =>
+                                              setSelectedEventImage(event.image)
+                                            }
+                                          >
+                                            <img
+                                              src={event.image}
+                                              className="w-full h-full object-cover"
+                                              alt={event.title}
+                                              onError={(e) => {
+                                                const target = e.currentTarget;
+                                                const parent =
+                                                  target.parentElement;
+                                                if (
+                                                  parent &&
+                                                  !parent.querySelector(
+                                                    ".img-error-label-admin",
+                                                  )
+                                                ) {
+                                                  target.style.opacity = "0.3";
+                                                  const errBox =
+                                                    document.createElement(
+                                                      "div",
+                                                    );
+                                                  errBox.className =
+                                                    "img-error-label-admin absolute inset-0 flex flex-col items-center justify-center bg-red-50/80 text-red-400";
+                                                  errBox.innerHTML = `
+                                                      <span class="text-[10px] font-bold uppercase">Err</span>
+                                                      <button class="text-[9px] underline px-2 py-0.5 mt-0.5" onclick="const img = this.closest('.group\\/admin-img').querySelector('img'); img.src = img.src.split('?retry=')[0] + '?retry=' + Date.now(); this.parentElement.remove();">Retry</button>
+                                                    `;
+                                                  parent.appendChild(errBox);
+                                                }
+                                              }}
+                                            />
+                                          </div>
+                                        ) : (
+                                          <div className="w-12 h-12 rounded-lg bg-stone-50 border border-dashed border-stone-200 flex items-center justify-center shrink-0">
+                                            <ImageIcon
+                                              size={16}
+                                              className="text-stone-200"
+                                            />
+                                          </div>
+                                        )}
+                                        <div>
+                                          <div className="flex items-center gap-2">
+                                            <p className="font-bold text-stone-800 text-sm">
+                                              {event.title}
+                                            </p>
+                                            {event.image && (
+                                              <span className="text-[8px] bg-green-100 text-green-700 px-1 py-0.5 rounded-full font-black">
+                                                {Math.round(
+                                                  event.image.length / 1024,
+                                                )}
+                                                KB
+                                              </span>
+                                            )}
+                                          </div>
+                                          <p className="text-[10px] text-stone-500 line-clamp-1 max-w-[200px]">
+                                            {event.description}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                      <span className="text-xs font-bold text-stone-600 bg-stone-100 px-2 py-1 rounded-md">
+                                        {event.templeName}
+                                      </span>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                      <p className="text-xs font-bold text-stone-700">
+                                        {event.date}
+                                      </p>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                      <div className="flex gap-2">
+                                        <button
+                                          onClick={() => {
+                                            setEditingEvent({
+                                              templeId: String(event.tId),
+                                              eventId: String(event._id),
+                                              eventData: event,
+                                            });
+                                            setIsEditEventModalOpen(true);
+                                          }}
+                                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                          title="Edit"
+                                        >
+                                          <Edit2 size={16} />
+                                        </button>
+                                        <button
+                                          onClick={() =>
+                                            handleDeleteEvent(
+                                              String(event.tId),
+                                              String(event._id),
+                                            )
+                                          }
+                                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                          title="Delete"
+                                        >
+                                          <Trash2 size={16} />
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                            </tbody>
+                          </table>
+                          {temples.filter((t) => t.events?.length > 0)
+                            .length === 0 && (
+                              <div className="text-center py-20 text-stone-400 bg-stone-50/30">
+                                <Calendar
+                                  size={48}
+                                  className="mx-auto mb-4 opacity-10"
+                                />
+                                <p className="font-bold text-sm">
+                                  No events found.
+                                </p>
+                              </div>
+                            )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </>
@@ -1894,6 +2482,7 @@ export default function App() {
                   </label>
                   <input
                     type="text"
+                    value={eventData.title}
                     placeholder="e.g. Maha Shivratri Utsav"
                     className="w-full p-4 bg-stone-50 border border-stone-100 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none transition"
                     onChange={(e) =>
@@ -1908,6 +2497,7 @@ export default function App() {
                   </label>
                   <input
                     type="date"
+                    value={eventData.date}
                     className="w-full p-4 bg-stone-50 border border-stone-100 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none transition"
                     onChange={(e) =>
                       setEventData({ ...eventData, date: e.target.value })
@@ -1916,12 +2506,10 @@ export default function App() {
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-2">
-                    Description
-                  </label>
                   <textarea
                     placeholder="Tell us about the celebration..."
                     className="w-full p-4 bg-stone-50 border border-stone-100 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none h-28 transition"
+                    value={eventData.description}
                     onChange={(e) =>
                       setEventData({
                         ...eventData,
@@ -1929,6 +2517,34 @@ export default function App() {
                       })
                     }
                   ></textarea>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-2">
+                    Event Image
+                  </label>
+                  <div className="mt-2 flex items-center gap-4">
+                    <label className="cursor-pointer bg-stone-50 border border-dashed border-stone-300 rounded-2xl p-4 flex-1 flex flex-col items-center justify-center hover:bg-stone-100 transition">
+                      <Upload size={20} className="text-stone-400 mb-1" />
+                      <span className="text-[10px] font-bold text-stone-500">
+                        Upload Image
+                      </span>
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={(e) => handleImageUpload(e, "event")}
+                      />
+                    </label>
+                    {eventData.image && (
+                      <div className="w-20 h-20 rounded-2xl overflow-hidden border border-stone-200">
+                        <img
+                          src={eventData.image}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -1949,6 +2565,155 @@ export default function App() {
                   className="flex-1 py-4 bg-orange-500 text-white font-bold rounded-2xl shadow-lg shadow-orange-200 hover:bg-orange-600 transition"
                 >
                   Save Event
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* --- EDIT EVENT MODAL --- */}
+        {isEditEventModalOpen && editingEvent && (
+          <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+            <div className="bg-white rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl border border-stone-100">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-black text-stone-900 uppercase tracking-tight">
+                  Edit Event
+                </h2>
+                <button
+                  onClick={() => setIsEditEventModalOpen(false)}
+                  className="text-stone-400 hover:text-stone-600"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-2">
+                    Event Title
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full p-4 bg-stone-50 border border-stone-100 rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none transition"
+                    value={editingEvent.eventData.title}
+                    onChange={(e) =>
+                      setEditingEvent({
+                        ...editingEvent,
+                        eventData: {
+                          ...editingEvent.eventData,
+                          title: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-2">
+                    Event Date
+                  </label>
+                  <input
+                    type="date"
+                    className="w-full p-4 bg-stone-50 border border-stone-100 rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none transition"
+                    value={editingEvent.eventData.date}
+                    onChange={(e) =>
+                      setEditingEvent({
+                        ...editingEvent,
+                        eventData: {
+                          ...editingEvent.eventData,
+                          date: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-2">
+                    Description
+                  </label>
+                  <textarea
+                    className="w-full p-4 bg-stone-50 border border-stone-100 rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none h-28 transition"
+                    value={editingEvent.eventData.description}
+                    onChange={(e) =>
+                      setEditingEvent({
+                        ...editingEvent,
+                        eventData: {
+                          ...editingEvent.eventData,
+                          description: e.target.value,
+                        },
+                      })
+                    }
+                  ></textarea>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-2">
+                    Event Image
+                  </label>
+                  <div className="mt-2 flex items-center gap-4">
+                    <label className="cursor-pointer bg-stone-50 border border-dashed border-stone-300 rounded-2xl p-4 flex-1 flex flex-col items-center justify-center hover:bg-stone-100 transition">
+                      <Upload size={20} className="text-stone-400 mb-1" />
+                      <span className="text-[10px] font-bold text-stone-500">
+                        Change Image
+                      </span>
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={(e) => handleImageUpload(e, "edit-event")}
+                      />
+                    </label>
+                    {editingEvent.eventData.image ? (
+                      <div className="w-20 h-20 rounded-2xl overflow-hidden border border-stone-200 bg-stone-50 flex items-center justify-center">
+                        <img
+                          src={editingEvent.eventData.image}
+                          className="w-full h-full object-cover"
+                          key={editingEvent.eventData.image.substring(0, 50)} // Force re-render on image change
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none";
+                            const parent = e.currentTarget.parentElement;
+                            if (parent) {
+                              const err = document.createElement("div");
+                              err.className =
+                                "text-[x-small] font-bold text-red-400 text-center px-1";
+                              err.innerText = "PREVIEW ERROR";
+                              parent.appendChild(err);
+                            }
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-20 h-20 rounded-2xl border border-dashed border-stone-200 flex flex-col items-center justify-center bg-stone-50/50">
+                        <ImageIcon size={16} className="text-stone-300" />
+                        <span className="text-[8px] font-bold text-stone-400 mt-1 uppercase">
+                          No Image
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-4 mt-8">
+                <button
+                  onClick={() => setIsEditEventModalOpen(false)}
+                  className="flex-1 py-4 font-bold text-stone-500 hover:bg-stone-50 rounded-2xl transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    handleUpdateEvent(
+                      editingEvent.templeId,
+                      editingEvent.eventId,
+                      editingEvent.eventData,
+                    );
+                    setIsEditEventModalOpen(false);
+                  }}
+                  className="flex-1 py-4 bg-amber-600 text-white font-bold rounded-2xl shadow-lg shadow-amber-200 hover:bg-amber-700 transition"
+                >
+                  Update Event
                 </button>
               </div>
             </div>
@@ -2225,7 +2990,7 @@ export default function App() {
                   className="w-10 h-10 object-contain mr-3 opacity-80"
                 />
                 <span className="text-2xl font-bold text-white tracking-tight">
-                  JainMandirConnect
+                  Jainm Gurukul
                 </span>
               </div>
               <p className="text-stone-500 max-w-sm leading-relaxed">
@@ -2298,6 +3063,32 @@ export default function App() {
         message={modal.message}
         onClose={() => setModal((prev) => ({ ...prev, isOpen: false }))}
       />
+
+      {/* --- EVENT IMAGE LIGHTBOX --- */}
+      {selectedEventImage && (
+        <div
+          className="fixed inset-0 bg-stone-900/90 backdrop-blur-xl z-[200] flex items-center justify-center p-4 md:p-12 animate-in fade-in duration-300"
+          onClick={() => setSelectedEventImage(null)}
+        >
+          <button
+            className="absolute top-8 right-8 text-white/50 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-full"
+            onClick={() => setSelectedEventImage(null)}
+          >
+            <X size={32} />
+          </button>
+
+          <div
+            className="relative max-w-5xl w-full max-h-full flex items-center justify-center animate-in zoom-in-95 duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={selectedEventImage}
+              className="max-w-full max-h-[85vh] object-contain rounded-3xl shadow-2xl border border-white/10"
+              alt="Event Preview"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -11,6 +11,8 @@ const ClassSchema = new mongoose.Schema(
         students: { type: Number, default: 0 },
         syllabus: { type: String }, // Base64 data or URL
         fileName: { type: String },
+        sequenceOrder: { type: Number, default: 0 },
+        isCompleted: { type: Boolean, default: false },
     },
     { timestamps: true },
 );

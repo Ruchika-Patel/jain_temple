@@ -17,6 +17,10 @@ const SubadminNotificationSchema = new mongoose.Schema({
     type: String,
     default: "student",
   },
+  targetClass: {
+    type: String,
+    default: "all",
+  },
   createdAt: {
     type: Date,
     default: Date.now,

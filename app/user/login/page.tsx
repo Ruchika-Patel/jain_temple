@@ -51,27 +51,50 @@ function UserAuthContent() {
     email: "",
     password: "",
     studentClass: "",
-    templeName: templeFromUrl || "", // URL se seedha yahan set karein
+    templeName: templeFromUrl || "",
     paymentId: "",
     paid: false,
     amount: 500,
+    phone: "",
+    address: "",
+    city: "",
+    state: "",
+    pincode: "",
   });
 
   useEffect(() => {
-    const savedClasses = localStorage.getItem("all_classes");
-    if (savedClasses) {
-      const parsedClasses = JSON.parse(savedClasses);
-      setAvailableClasses(parsedClasses);
-      if (parsedClasses.length > 0) {
-        setFormData((prev) => ({
-          ...prev,
-          studentClass: parsedClasses[0].grade,
-        }));
+    const fetchRegClass = async () => {
+      try {
+        const res = await fetch("/api/classes?forRegistration=true");
+        const result = await res.json();
+        if (result.success && result.data && result.data.length > 0) {
+          setAvailableClasses(result.data);
+          setFormData((prev) => ({
+            ...prev,
+            studentClass: result.data[0].grade,
+          }));
+        } else {
+          setAvailableClasses([]);
+        }
+      } catch (error) {
+        console.error("Error fetching registration class:", error);
       }
+    };
+
+    if (!isLogin) {
+      fetchRegClass();
     }
   }, [isLogin]);
 
   const handlePayment = async () => {
+    if (formData.phone.length !== 10) {
+      showModal("error", "Invalid Phone", "Please enter a valid 10-digit mobile number.");
+      return;
+    }
+    if (formData.pincode.length !== 6) {
+      showModal("error", "Invalid Pincode", "Please enter a valid 6-digit pincode.");
+      return;
+    }
     setLoading(true);
     const options = {
       key: "rzp_test_JoGd2dFYk5NKV1",
@@ -104,6 +127,14 @@ function UserAuthContent() {
     if (isLogin) {
       handleLogin();
     } else {
+      if (formData.phone.length !== 10) {
+        showModal("error", "Invalid Phone", "Please enter a valid 10-digit mobile number.");
+        return;
+      }
+      if (formData.pincode.length !== 6) {
+        showModal("error", "Invalid Pincode", "Please enter a valid 6-digit pincode.");
+        return;
+      }
       const hasPaid = localStorage.getItem("payment_status") === "success";
       if (hasPaid) {
         handleFinalRegister(localStorage.getItem("last_payment_id") || "");
@@ -136,6 +167,11 @@ function UserAuthContent() {
           templeName: result.templeName,
           studentClass: result.studentClass,
           paymentId: result.paymentId,
+          phone: result.phone || "",
+          address: result.address || "",
+          city: result.city || "",
+          state: result.state || "",
+          pincode: result.pincode || "",
         };
         localStorage.setItem("current_user", JSON.stringify(userData));
 
@@ -181,6 +217,11 @@ function UserAuthContent() {
         paymentId: razorpayId,
         amount: 500,
         paid: true,
+        phone: formData.phone,
+        address: formData.address,
+        city: formData.city,
+        state: formData.state,
+        pincode: formData.pincode,
       };
 
       const res = await fetch("/api/user/register", {
@@ -261,6 +302,7 @@ function UserAuthContent() {
                     required
                     placeholder="Enter your name"
                     className={inputStyle}
+                    value={formData.name}
                     onChange={(e) =>
                       setFormData({ ...formData, name: e.target.value })
                     }
@@ -314,6 +356,7 @@ function UserAuthContent() {
                 required
                 placeholder="email@example.com"
                 className={inputStyle}
+                value={formData.email}
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
                 }
@@ -335,12 +378,102 @@ function UserAuthContent() {
                 required
                 placeholder="••••••••"
                 className={inputStyle}
+                value={formData.password}
                 onChange={(e) =>
                   setFormData({ ...formData, password: e.target.value })
                 }
               />
             </div>
           </div>
+
+          {!isLogin && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-stone-500 uppercase ml-2">
+                    Phone Number (10 Digits)
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    maxLength={10}
+                    placeholder="10 digit phone"
+                    className={inputStyle + " pl-6"}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+                      setFormData({ ...formData, phone: val });
+                    }}
+                    value={formData.phone}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-stone-500 uppercase ml-2">
+                    City
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="City"
+                    className={inputStyle + " pl-6"}
+                    value={formData.city}
+                    onChange={(e) =>
+                      setFormData({ ...formData, city: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-stone-500 uppercase ml-2">
+                    State
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="State"
+                    className={inputStyle + " pl-6"}
+                    value={formData.state}
+                    onChange={(e) =>
+                      setFormData({ ...formData, state: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-stone-500 uppercase ml-2">
+                    Pincode (6 Digits)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={6}
+                    placeholder="6 digit pincode"
+                    className={inputStyle + " pl-6"}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                      setFormData({ ...formData, pincode: val });
+                    }}
+                    value={formData.pincode}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-stone-500 uppercase ml-2">
+                  Full Address
+                </label>
+                <textarea
+                  required
+                  placeholder="Street, House No, Area..."
+                  className={inputStyle + " pl-6 h-24 pt-4 resize-none"}
+                  value={formData.address}
+                  onChange={(e) =>
+                    setFormData({ ...formData, address: e.target.value })
+                  }
+                />
+              </div>
+            </>
+          )}
 
           <button
             disabled={loading || (!isLogin && availableClasses.length === 0)}

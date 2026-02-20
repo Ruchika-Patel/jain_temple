@@ -33,6 +33,11 @@ export async function POST(req: Request) {
       templeName: user.templeName,
       studentClass: user.studentClass,
       paymentId: user.paymentId,
+      phone: user.phone || "",
+      address: user.address || "",
+      city: user.city || "",
+      state: user.state || "",
+      pincode: user.pincode || "",
     });
   } catch (error: any) {
     return NextResponse.json(

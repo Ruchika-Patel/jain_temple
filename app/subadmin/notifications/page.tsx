@@ -218,8 +218,8 @@ export default function SubadminNotification() {
                   onChange={(e) => setFormData({ ...formData, targetClass: e.target.value })}
                 >
                   <option value="all">All Classes (Broadcast)</option>
-                  {availableClasses.map((cls) => (
-                    <option key={cls._id} value={cls.grade}>
+                  {availableClasses?.map((cls, index) => (
+                    <option key={cls._id || cls.grade || index} value={cls.grade}>
                       🎓 {cls.grade} Students Only
                     </option>
                   ))}
@@ -375,8 +375,8 @@ export default function SubadminNotification() {
                     onChange={(e) => setEditingNotification({ ...editingNotification, targetClass: e.target.value })}
                   >
                     <option value="all">All Classes</option>
-                    {availableClasses.map((cls) => (
-                      <option key={cls._id} value={cls.grade}>{cls.grade}</option>
+                    {availableClasses?.map((cls, index) => (
+                      <option key={cls._id || cls.grade || index} value={cls.grade}>{cls.grade}</option>
                     ))}
                   </select>
                 </div>

@@ -37,7 +37,7 @@ function UserAuthContent() {
   const showModal = (
     status: "success" | "error" | "loading",
     title: string,
-    message: string
+    message: string,
   ) => {
     setModal({ isOpen: true, status, title, message });
     if (status !== "loading") {
@@ -88,16 +88,24 @@ function UserAuthContent() {
 
   const handlePayment = async () => {
     if (formData.phone.length !== 10) {
-      showModal("error", "Invalid Phone", "Please enter a valid 10-digit mobile number.");
+      showModal(
+        "error",
+        "Invalid Phone",
+        "Please enter a valid 10-digit mobile number.",
+      );
       return;
     }
     if (formData.pincode.length !== 6) {
-      showModal("error", "Invalid Pincode", "Please enter a valid 6-digit pincode.");
+      showModal(
+        "error",
+        "Invalid Pincode",
+        "Please enter a valid 6-digit pincode.",
+      );
       return;
     }
     setLoading(true);
     const options = {
-      key: "rzp_test_JoGd2dFYk5NKV1",
+      key: "rzp_test_SQb3TYmH5ZnDvR",
       amount: 500 * 100,
       currency: "INR",
       name: "Temple Education Portal",
@@ -128,11 +136,19 @@ function UserAuthContent() {
       handleLogin();
     } else {
       if (formData.phone.length !== 10) {
-        showModal("error", "Invalid Phone", "Please enter a valid 10-digit mobile number.");
+        showModal(
+          "error",
+          "Invalid Phone",
+          "Please enter a valid 10-digit mobile number.",
+        );
         return;
       }
       if (formData.pincode.length !== 6) {
-        showModal("error", "Invalid Pincode", "Please enter a valid 6-digit pincode.");
+        showModal(
+          "error",
+          "Invalid Pincode",
+          "Please enter a valid 6-digit pincode.",
+        );
         return;
       }
       const hasPaid = localStorage.getItem("payment_status") === "success";
@@ -178,7 +194,7 @@ function UserAuthContent() {
         showModal(
           "success",
           "Login Successful",
-          "Welcome back! Redirecting in 2 seconds..."
+          "Welcome back! Redirecting in 2 seconds...",
         );
         setTimeout(() => {
           setLoading(false);
@@ -188,7 +204,7 @@ function UserAuthContent() {
         showModal(
           "error",
           "Login Failed",
-          result.message || "Invalid credentials."
+          result.message || "Invalid credentials.",
         );
       }
     } catch (error) {
@@ -196,7 +212,7 @@ function UserAuthContent() {
       showModal(
         "error",
         "System Error",
-        "Failed to connect to authentication server."
+        "Failed to connect to authentication server.",
       );
     } finally {
       setLoading(false);
@@ -234,18 +250,30 @@ function UserAuthContent() {
 
       if (res.ok && result.success) {
         localStorage.setItem("current_user", JSON.stringify(userData));
-        showModal("success", "Success!", "Account registered! Accessing dashboard in 2s...");
+        showModal(
+          "success",
+          "Success!",
+          "Account registered! Accessing dashboard in 2s...",
+        );
         localStorage.removeItem("payment_status");
 
         setTimeout(() => {
           router.push("/user/dashboard");
         }, 2000);
       } else {
-        showModal("error", "Registration Failed", result.message || "Something went wrong.");
+        showModal(
+          "error",
+          "Registration Failed",
+          result.message || "Something went wrong.",
+        );
       }
     } catch (error) {
       console.error("DB Error:", error);
-      showModal("error", "Database Error", "Failed to connect to registration server.");
+      showModal(
+        "error",
+        "Database Error",
+        "Failed to connect to registration server.",
+      );
     } finally {
       setLoading(false);
     }
@@ -400,7 +428,9 @@ function UserAuthContent() {
                     placeholder="10 digit phone"
                     className={inputStyle + " pl-6"}
                     onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+                      const val = e.target.value
+                        .replace(/\D/g, "")
+                        .slice(0, 10);
                       setFormData({ ...formData, phone: val });
                     }}
                     value={formData.phone}
@@ -514,11 +544,13 @@ function UserAuthContent() {
 
 export default function UserAuth() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
-        <Loader2 className="animate-spin text-amber-600" size={48} />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+          <Loader2 className="animate-spin text-amber-600" size={48} />
+        </div>
+      }
+    >
       <UserAuthContent />
     </Suspense>
   );

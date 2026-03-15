@@ -100,7 +100,7 @@ export default function NotificationPanel({
             onClick={() => setIsOpen(false)}
           />
 
-          <div className="fixed inset-0 md:absolute md:top-full md:right-0 md:mt-4 w-full h-full md:h-auto md:w-96 bg-white md:rounded-[2rem] shadow-2xl border-stone-100 overflow-hidden z-[100] md:z-50 flex flex-col animate-in fade-in slide-in-from-bottom-full md:slide-in-from-top-2 duration-500">
+          <div className="fixed inset-0 md:absolute md:inset-auto md:top-full md:right-0 md:mt-4 w-full h-full md:h-auto md:w-96 bg-white md:rounded-[2rem] shadow-2xl border-stone-100 overflow-hidden z-[100] md:z-50 flex flex-col animate-in fade-in slide-in-from-bottom-full md:slide-in-from-top-2 duration-500">
             <div className="p-6 md:p-8 border-b border-stone-50 flex justify-between items-center bg-stone-50/50 sticky top-0 z-10">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-amber-600 rounded-lg flex items-center justify-center text-white md:hidden">

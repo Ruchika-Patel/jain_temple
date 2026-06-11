@@ -1355,13 +1355,15 @@ export default function App() {
               {/* Vision & Mission */}
               <div className="lg:col-span-1 bg-white/60 backdrop-blur-md p-8 rounded-[2.5rem] shadow-sm hover:shadow-xl transition-all duration-300 border border-stone-100/80 flex flex-col justify-between space-y-6">
                 <div className="space-y-4">
-                  <div className="w-12 h-12 bg-amber-50 text-amber-700 rounded-2xl flex items-center justify-center">
-                    <Star size={24} className="fill-amber-500 text-amber-500" />
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-amber-50 text-amber-700 rounded-2xl flex items-center justify-center shrink-0">
+                      <Star size={24} className="fill-amber-500 text-amber-500" />
+                    </div>
+                    <h2 className="text-2xl font-extrabold text-stone-900 tracking-tight leading-tight">
+                      Our Vision & <br />
+                      <span className="text-amber-700 text-lg font-bold">Mission</span>
+                    </h2>
                   </div>
-                  <h2 className="text-2xl font-extrabold text-stone-900 tracking-tight">
-                    Our Vision & <br />
-                    <span className="text-amber-700 text-lg font-bold">Mission</span>
-                  </h2>
                   <p className="text-stone-600 text-sm leading-relaxed font-semibold">
                     To preserve and pass down Jain values, rituals, and philosophical education to the next generation through structured curriculum and community connects.
                   </p>
@@ -1369,23 +1371,23 @@ export default function App() {
               </div>
 
               {/* Quick Links */}
-              <div className="lg:col-span-2 bg-white/60 backdrop-blur-md p-8 rounded-[2.5rem] shadow-sm border border-stone-100/80 space-y-6">
+              <div className="lg:col-span-2 bg-white/60 backdrop-blur-md px-3.5 py-6 sm:p-8 rounded-[2.5rem] shadow-sm border border-stone-100/80 space-y-6">
                 <h2 className="text-2xl font-extrabold text-stone-900 tracking-tight">
                   Quick Links <br />
                   <span className="text-stone-400 text-xs font-bold uppercase tracking-wider">Portal Actions</span>
                 </h2>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <div className="grid grid-cols-3 gap-2 sm:gap-6">
                   {/* Card 1: New Registration */}
                   <div
                     onClick={() => router.push("/user/login?mode=register")}
-                    className="bg-stone-50/80 border border-stone-100 hover:border-amber-500 rounded-3xl p-6 cursor-pointer hover:-translate-y-1 transition duration-300 flex flex-col justify-between group h-full min-h-[160px]"
+                    className="bg-stone-50/80 border border-stone-100 hover:border-amber-500 rounded-2xl sm:rounded-3xl px-2.5 py-3.5 sm:p-6 cursor-pointer hover:-translate-y-1 transition duration-300 flex flex-col justify-between group h-full min-h-[110px] sm:min-h-[160px]"
                   >
-                    <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
-                      <PlusCircle size={20} />
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
+                      <PlusCircle className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
                     </div>
                     <div>
-                      <h3 className="font-extrabold text-stone-800 text-base leading-snug group-hover:text-amber-600 transition">
+                      <h3 className="font-extrabold text-stone-800 text-[10px] sm:text-base leading-tight tracking-tight sm:tracking-normal group-hover:text-amber-600 transition">
                         New Registration
                       </h3>
                     </div>
@@ -1394,13 +1396,13 @@ export default function App() {
                   {/* Card 2: Exam Center List */}
                   <div
                     onClick={() => setIsExamVenueModalOpen(true)}
-                    className="bg-stone-50/80 border border-stone-100 hover:border-amber-500 rounded-3xl p-6 cursor-pointer hover:-translate-y-1 transition duration-300 flex flex-col justify-between group h-full min-h-[160px]"
+                    className="bg-stone-50/80 border border-stone-100 hover:border-amber-500 rounded-2xl sm:rounded-3xl px-2.5 py-3.5 sm:p-6 cursor-pointer hover:-translate-y-1 transition duration-300 flex flex-col justify-between group h-full min-h-[110px] sm:min-h-[160px]"
                   >
-                    <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
-                      <MapPin size={20} />
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
+                      <MapPin className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
                     </div>
                     <div>
-                      <h3 className="font-extrabold text-stone-800 text-base leading-snug group-hover:text-amber-600 transition">
+                      <h3 className="font-extrabold text-stone-800 text-[10px] sm:text-base leading-tight tracking-tight sm:tracking-normal group-hover:text-amber-600 transition">
                         Exam Venues
                       </h3>
                     </div>
@@ -1409,18 +1411,117 @@ export default function App() {
                   {/* Card 3: Student Login */}
                   <div
                     onClick={() => router.push("/user/login")}
-                    className="bg-stone-50/80 border border-stone-100 hover:border-amber-500 rounded-3xl p-6 cursor-pointer hover:-translate-y-1 transition duration-300 flex flex-col justify-between group h-full min-h-[160px]"
+                    className="bg-stone-50/80 border border-stone-100 hover:border-amber-500 rounded-2xl sm:rounded-3xl px-2.5 py-3.5 sm:p-6 cursor-pointer hover:-translate-y-1 transition duration-300 flex flex-col justify-between group h-full min-h-[110px] sm:min-h-[160px]"
                   >
-                    <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
-                      <User size={20} />
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
+                      <User className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
                     </div>
                     <div>
-                      <h3 className="font-extrabold text-stone-800 text-base leading-snug group-hover:text-amber-600 transition">
+                      <h3 className="font-extrabold text-stone-800 text-[10px] sm:text-base leading-tight tracking-tight sm:tracking-normal group-hover:text-amber-600 transition">
                         Student Login
                       </h3>
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Pathshala Classes Cards Section */}
+            <div className="space-y-6 pt-4">
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pl-2">
+                <div className="space-y-1">
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black text-amber-700 bg-amber-50/60 backdrop-blur-sm border border-amber-100/60 uppercase tracking-widest">
+                    <BookOpen size={10} className="text-amber-550" /> Pathshala Curriculum
+                  </span>
+                  <h2 className="text-2xl font-black text-stone-900 uppercase tracking-tight">
+                    Pathshala Classes 1 to 12
+                  </h2>
+                  <p className="text-stone-500 text-sm font-semibold">
+                    Select a class to view its syllabus, topics, and schedule study materials.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setView("classes");
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-700 hover:text-amber-805 bg-amber-50/80 hover:bg-amber-100/80 border border-amber-100 px-4 py-2.5 rounded-xl transition duration-300 shadow-sm active:scale-95 w-fit"
+                >
+                  View Curriculum <ArrowRight size={14} />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {Array.from({ length: 12 }, (_, i) => {
+                  const n = i + 1;
+                  const suffix = n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th";
+                  const gradeName = `${n}${suffix} Class`;
+                  
+                  // Premium Category Colors mapping
+                  let cardHoverTheme = "hover:border-amber-400 hover:shadow-amber-100/50 hover:bg-amber-50/20";
+                  let iconTheme = "text-amber-600 bg-amber-50 border-amber-100";
+                  let labelText = "Primary";
+                  let dotTheme = "bg-amber-500";
+
+                  if (n >= 6 && n <= 8) {
+                    cardHoverTheme = "hover:border-rose-400 hover:shadow-rose-100/50 hover:bg-rose-50/20";
+                    iconTheme = "text-rose-600 bg-rose-50 border-rose-100";
+                    labelText = "Middle";
+                    dotTheme = "bg-rose-500";
+                  } else if (n >= 9 && n <= 12) {
+                    cardHoverTheme = "hover:border-purple-400 hover:shadow-purple-100/50 hover:bg-purple-50/20";
+                    iconTheme = "text-purple-600 bg-purple-50 border-purple-100";
+                    labelText = "Senior";
+                    dotTheme = "bg-purple-500";
+                  }
+
+                  return (
+                    <div
+                      key={n}
+                      onClick={() => {
+                        setView("classes");
+                        setTimeout(() => {
+                          const element = document.getElementById(`class-card-${n}`);
+                          if (element) {
+                            element.scrollIntoView({ behavior: "smooth", block: "center" });
+                            // Highlight clicked class card
+                            element.classList.add("ring-4", "ring-amber-500/40", "scale-[1.02]", "border-amber-500");
+                            setTimeout(() => {
+                              element.classList.remove("ring-4", "ring-amber-500/40", "scale-[1.02]", "border-amber-500");
+                            }, 2000);
+                          } else {
+                            window.scrollTo({ top: 0, behavior: "smooth" });
+                          }
+                        }, 150);
+                      }}
+                      className={`bg-white rounded-[2rem] border border-stone-150 p-5 cursor-pointer transition-all duration-300 flex flex-col justify-between group h-36 relative overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-1 ${cardHoverTheme}`}
+                    >
+                      {/* Interactive background accent glow */}
+                      <div className="absolute -right-3 -bottom-3 w-10 h-10 rounded-full bg-stone-50 group-hover:scale-[3] group-hover:bg-white/50 transition-all duration-500 -z-10" />
+
+                      <div className="flex justify-between items-center w-full">
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center border transition-all duration-300 group-hover:scale-110 ${iconTheme}`}>
+                          <BookOpen size={15} />
+                        </div>
+                        <span className="text-[9px] font-bold text-stone-400 group-hover:text-stone-500 transition-colors uppercase tracking-wider">
+                          {labelText}
+                        </span>
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`w-1.5 h-1.5 rounded-full ${dotTheme} group-hover:scale-125 transition-transform`} />
+                          <span className="text-[10px] font-black text-stone-400 group-hover:text-stone-500 uppercase tracking-widest transition-colors">
+                            Grade
+                          </span>
+                        </div>
+                        <h3 className="font-extrabold text-stone-855 text-base tracking-tight group-hover:text-stone-900 transition-colors leading-tight">
+                          {gradeName}
+                        </h3>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -3771,6 +3872,7 @@ export default function App() {
                             return (
                               <div
                                 key={cls.grade}
+                                id={`class-card-${cls.grade.replace(/\D/g, "")}`}
                                 className="bg-white p-6 rounded-[2rem] border border-stone-150 hover:border-amber-500/50 hover:shadow-xl transition-all duration-300 flex flex-col justify-between space-y-6 group"
                               >
                                 <div className="space-y-4">

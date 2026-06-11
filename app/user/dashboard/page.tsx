@@ -33,6 +33,11 @@ export default function UserDashboard() {
   const [loadingExams, setLoadingExams] = useState(true);
   const [isAdmitCardModalOpen, setIsAdmitCardModalOpen] = useState(false);
 
+  const offlineExam = exams.find((ex) => ex.examType === "offline");
+  const examCentreVenue = offlineExam 
+    ? (offlineExam.venue || "Not Assigned") 
+    : (exams.length > 0 && exams.every((ex) => ex.examType === "online") ? "Online Portal" : (user?.templeName || "Not Assigned"));
+
   useEffect(() => {
     const savedUser = localStorage.getItem("current_user");
     if (!savedUser) {
@@ -655,7 +660,7 @@ export default function UserDashboard() {
                   Exam Centre / Venue
                 </p>
                 <h3 className="text-lg font-black uppercase text-stone-900 tracking-tight leading-tight">
-                  {user.templeName}
+                  {examCentreVenue}
                 </h3>
               </div>
             </div>
@@ -797,6 +802,12 @@ export default function UserDashboard() {
                           <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
                           {exam.date} at {exam.time} ({exam.duration} Min) • {exam.questions?.reduce((acc: number, q: any) => acc + (q.marks || 1), 0) || 0} Marks
                         </p>
+                        {exam.examType === "offline" && (
+                          <p className="text-xs font-semibold text-stone-500 mt-2 flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+                            Venue: {exam.venue || "Not Assigned"}
+                          </p>
+                        )}
                       </div>
 
                       <div className="mt-6 pt-4 border-t border-stone-100 flex justify-between items-center">
@@ -953,7 +964,7 @@ export default function UserDashboard() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-stone-400 text-xs">Exam Centre:</span>
-                    <span className="truncate max-w-[180px]">{user.templeName}</span>
+                    <span className="truncate max-w-[180px]">{examCentreVenue}</span>
                   </div>
                 </div>
 
@@ -1186,7 +1197,7 @@ export default function UserDashboard() {
                               </div>
                               <div class="info-row">
                                 <span class="info-label">Exam Centre:</span>
-                                <span class="info-value">${user.templeName}</span>
+                                <span class="info-value">${examCentreVenue}</span>
                               </div>
                             </div>
                             

@@ -385,7 +385,7 @@ function UserAuthContent() {
 
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-stone-500 uppercase ml-2">
-                  Select Exam Center / Temple
+                  School Name (Temple Name)
                 </label>
                 <div className="relative">
                   <MapPin

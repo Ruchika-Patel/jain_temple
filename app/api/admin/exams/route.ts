@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   try {
     await connectDB();
     const body = await req.json();
-    const { grade, subject, date, time, duration, examType, negativeMarking, negativeMarks, questions } = body;
+    const { grade, subject, date, time, duration, examType, negativeMarking, negativeMarks, questions, venue } = body;
 
     if (!grade || !subject || !date || !time || !duration) {
       return NextResponse.json({ success: false, message: "Missing required fields!" }, { status: 400 });
@@ -36,6 +36,7 @@ export async function POST(req: Request) {
       negativeMarking: !!negativeMarking,
       negativeMarks: Number(negativeMarks || 0),
       questions: questions || [],
+      venue: venue || "Not Assigned",
     });
 
     return NextResponse.json({ success: true, message: "Exam created successfully!", data: newExam });
@@ -48,7 +49,7 @@ export async function PUT(req: Request) {
   try {
     await connectDB();
     const body = await req.json();
-    const { id, grade, subject, date, time, duration, examType, negativeMarking, negativeMarks, questions } = body;
+    const { id, grade, subject, date, time, duration, examType, negativeMarking, negativeMarks, questions, venue } = body;
 
     if (!id) {
       return NextResponse.json({ success: false, message: "Exam DB ID is required!" }, { status: 400 });
@@ -66,6 +67,7 @@ export async function PUT(req: Request) {
         negativeMarking: !!negativeMarking,
         negativeMarks: Number(negativeMarks || 0),
         questions: questions || [],
+        venue,
       },
       { new: true }
     );

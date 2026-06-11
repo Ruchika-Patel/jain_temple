@@ -27,6 +27,7 @@ export default function AddClassPage() {
   const [sections, setSections] = useState<string[]>(["A", "B", "C"]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [adminClasses, setAdminClasses] = useState<any[]>([]);
+  const [temples, setTemples] = useState<any[]>([]);
   const [modal, setModal] = useState<{
     isOpen: boolean;
     status: "success" | "error" | "loading";
@@ -89,8 +90,22 @@ export default function AddClassPage() {
     }
   };
 
+  const fetchTemples = async () => {
+    try {
+      const res = await fetch("/api/temples");
+      const data = await res.json();
+      if (data.success) {
+        const verified = data.data.filter((t: any) => t.status === "verified");
+        setTemples(verified);
+      }
+    } catch (err) {
+      console.error("Error fetching temples:", err);
+    }
+  };
+
   useEffect(() => {
     fetchClasses();
+    fetchTemples();
   }, []);
 
   const classesList = Array.from({ length: 12 }, (_, i) => {
@@ -346,6 +361,25 @@ export default function AddClassPage() {
                   className="w-full bg-stone-50 px-6 py-4 md:px-8 md:py-5 rounded-2xl border-2 border-stone-300 outline-none text-base font-bold text-stone-900 placeholder:text-stone-400"
                   placeholder="e.g. Mathematics, Science, English, Social Studies"
                 />
+              </div>
+
+              <div className="flex flex-col gap-3 md:col-span-2">
+                <label className="text-xs font-black text-stone-900 uppercase tracking-widest ml-2">
+                  Exam Venue (School / Temple Name)
+                </label>
+                <select
+                  value={examVenue}
+                  onChange={(e) => setExamVenue(e.target.value)}
+                  className="w-full bg-stone-50 px-6 py-4 md:px-8 md:py-5 rounded-2xl border-2 border-stone-300 outline-none text-base font-bold text-stone-900"
+                >
+                  <option value="Not Assigned">Not Assigned</option>
+                  <option value="Online Portal">Online Portal</option>
+                  {temples.map((t) => (
+                    <option key={t._id || t.id} value={t.name}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="flex flex-col gap-3 md:col-span-2">

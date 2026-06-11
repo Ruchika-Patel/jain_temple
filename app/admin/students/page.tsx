@@ -365,7 +365,7 @@ export default function AdminStudentsPage() {
             onChange={(e) => setCenterFilter(e.target.value)}
             className="w-full bg-stone-50 px-4 py-3 rounded-xl border border-stone-200 outline-none text-sm font-semibold text-stone-900"
           >
-            <option value="">Filter by Exam Center...</option>
+            <option value="">Filter by School Name (Temple Name)...</option>
             {centers.map((c) => (
               <option key={c._id} value={c.name}>
                 {c.name}
@@ -406,7 +406,7 @@ export default function AdminStudentsPage() {
                       Class & Section
                     </th>
                     <th className="px-5 py-5 text-[10px] font-black text-stone-400 uppercase tracking-widest">
-                      Exam Centre
+                      School Name (Temple Name)
                     </th>
                     <th className="px-5 py-5 text-[10px] font-black text-stone-400 uppercase tracking-widest">
                       Mobile & Payment
@@ -526,7 +526,7 @@ export default function AdminStudentsPage() {
                       <p>{stu.studentClass} ({stu.section})</p>
                     </div>
                     <div>
-                      <p className="text-[9px] text-stone-400 uppercase font-black">Center</p>
+                      <p className="text-[9px] text-stone-400 uppercase font-black">School Name (Temple Name)</p>
                       <p className="truncate">{stu.templeName}</p>
                     </div>
                     <div>
@@ -684,7 +684,7 @@ export default function AdminStudentsPage() {
 
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-stone-500 uppercase ml-1">
-                    Exam Center *
+                    School Name (Temple Name) *
                   </label>
                   <select
                     value={templeName}

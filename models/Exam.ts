@@ -21,6 +21,7 @@ const ExamSchema = new mongoose.Schema(
     negativeMarking: { type: Boolean, default: false },
     negativeMarks: { type: Number, default: 0 },
     questions: { type: [QuestionSchema], default: [] },
+    venue: { type: String, default: "Not Assigned" },
   },
   { timestamps: true }
 );

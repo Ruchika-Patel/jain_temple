@@ -229,6 +229,7 @@ const INITIAL_TEMPLES: Temple[] = [
 export default function App() {
   const router = useRouter();
   const [view, setView] = useState<ViewState>("home");
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const [temples, setTemples] = useState<Temple[]>([]);
   const [selectedTempleId, setSelectedTempleId] = useState<
     string | number | null
@@ -381,7 +382,7 @@ export default function App() {
     }
 
     if (!fileData) {
-      alert(`इस कक्षा (${cls.grade}) के लिए वर्तमान में सिलेबस उपलब्ध नहीं है। \n(No syllabus file is uploaded for ${cls.grade} yet.)`);
+      alert(`No syllabus file is uploaded for ${cls.grade} yet.`);
       return;
     }
 
@@ -414,7 +415,7 @@ export default function App() {
       URL.revokeObjectURL(link.href);
     } catch (error) {
       console.error("Download error:", error);
-      alert("सिलेबस डाउनलोड करने में त्रुटि हुई। \n(Error processing the syllabus download.)");
+      alert("Error processing the syllabus download.");
     }
   };
 
@@ -1358,13 +1359,10 @@ export default function App() {
                     <Star size={24} className="fill-amber-500 text-amber-500" />
                   </div>
                   <h2 className="text-2xl font-extrabold text-stone-900 tracking-tight">
-                    हमारा संकल्प <br />
-                    <span className="text-amber-700 text-lg font-bold">Our Vision & Mission</span>
+                    Our Vision & <br />
+                    <span className="text-amber-700 text-lg font-bold">Mission</span>
                   </h2>
                   <p className="text-stone-600 text-sm leading-relaxed font-semibold">
-                    जैन संस्कारों और शिक्षा को अगली पीढ़ी तक पहुंचाना ही हमारा परम लक्ष्य है।
-                  </p>
-                  <p className="text-stone-500 text-xs leading-relaxed">
                     To preserve and pass down Jain values, rituals, and philosophical education to the next generation through structured curriculum and community connects.
                   </p>
                 </div>
@@ -1373,8 +1371,8 @@ export default function App() {
               {/* Quick Links */}
               <div className="lg:col-span-2 bg-white/60 backdrop-blur-md p-8 rounded-[2.5rem] shadow-sm border border-stone-100/80 space-y-6">
                 <h2 className="text-2xl font-extrabold text-stone-900 tracking-tight">
-                  त्वरित लिंक <br />
-                  <span className="text-stone-400 text-xs font-bold uppercase tracking-wider">Quick Actions</span>
+                  Quick Links <br />
+                  <span className="text-stone-400 text-xs font-bold uppercase tracking-wider">Portal Actions</span>
                 </h2>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
@@ -1388,11 +1386,8 @@ export default function App() {
                     </div>
                     <div>
                       <h3 className="font-extrabold text-stone-800 text-base leading-snug group-hover:text-amber-600 transition">
-                        नया रजिस्ट्रेशन
-                      </h3>
-                      <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wide mt-1">
                         New Registration
-                      </p>
+                      </h3>
                     </div>
                   </div>
 
@@ -1406,11 +1401,8 @@ export default function App() {
                     </div>
                     <div>
                       <h3 className="font-extrabold text-stone-800 text-base leading-snug group-hover:text-amber-600 transition">
-                        एग्जाम सेंटर सूची
-                      </h3>
-                      <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wide mt-1">
                         Exam Venues
-                      </p>
+                      </h3>
                     </div>
                   </div>
 
@@ -1424,11 +1416,8 @@ export default function App() {
                     </div>
                     <div>
                       <h3 className="font-extrabold text-stone-800 text-base leading-snug group-hover:text-amber-600 transition">
-                        स्टूडेंट लॉगिन
-                      </h3>
-                      <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wide mt-1">
                         Student Login
-                      </p>
+                      </h3>
                     </div>
                   </div>
                 </div>
@@ -1526,6 +1515,71 @@ export default function App() {
                 </p>
               </div>
             )}
+
+            {/* --- FAQs SECTION --- */}
+            <div className="mt-20 space-y-8 max-w-4xl mx-auto pb-10">
+              <div className="text-center space-y-2">
+                <h2 className="text-3xl font-black text-stone-900 uppercase tracking-tight">
+                  Frequently Asked Questions
+                </h2>
+                <p className="text-stone-400 text-xs font-bold uppercase tracking-wider">
+                  Quick Answers to Common Queries
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                {[
+                  {
+                    q: "How can I register my child for Jain Pathshala classes?",
+                    a: "Click the 'New Registration' card under Quick Links on the homepage, select your child's grade class and local temple, and submit the registration form."
+                  },
+                  {
+                    q: "What is the difference between Online and Offline exams?",
+                    a: "Online exams can be taken directly on this student portal from any device. Offline exams are conducted in person at the scheduled temple center (Exam Venue) assigned by the admin."
+                  },
+                  {
+                    q: "Where can I download the syllabus for my child's class?",
+                    a: "Head to the 'Classes' tab in the navbar, find your child's class, and click 'Download Syllabus' to get the PDF copy of the curriculum."
+                  },
+                  {
+                    q: "How can a new temple register on this platform?",
+                    a: "Temples can submit a registration request using the 'Register Temple' option in the admin console. Once verified by the admin, the temple details and leaders will be listed in the Verified Temples Directory."
+                  },
+                  {
+                    q: "How can students download their admit card for exams?",
+                    a: "Students can log in to their student dashboard, and if an exam is active/scheduled, click the 'Admit Card' button to view and print their entry slip."
+                  }
+                ].map((faq, idx) => {
+                  const isOpen = openFaqIndex === idx;
+                  return (
+                    <div
+                      key={idx}
+                      className="bg-white rounded-[1.8rem] border border-stone-200/80 shadow-sm overflow-hidden transition-all duration-300"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
+                        className="w-full px-8 py-5 text-left flex justify-between items-center hover:bg-stone-50 transition duration-300"
+                      >
+                        <span className="font-extrabold text-stone-850 text-base">
+                          {faq.q}
+                        </span>
+                        <span className={`text-xl font-bold text-amber-600 transition-transform duration-300 ${isOpen ? "rotate-45" : ""}`}>
+                          +
+                        </span>
+                      </button>
+                      <div
+                        className={`transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? "max-h-40 border-t border-stone-100" : "max-h-0"}`}
+                      >
+                        <p className="p-8 text-stone-600 text-sm leading-relaxed font-semibold bg-stone-50/30">
+                          {faq.a}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -3401,7 +3455,7 @@ export default function App() {
                 <div className="flex justify-between items-center mb-6 pb-4 border-b border-stone-100">
                   <div>
                     <h2 className="text-2xl font-black text-stone-900 uppercase tracking-tighter">
-                      एग्जाम सेंटर सूची
+                      Exam Centers
                     </h2>
                     <p className="text-stone-400 text-xs font-bold uppercase tracking-wider mt-0.5">
                       Exam Venues & Schedules
@@ -3424,16 +3478,15 @@ export default function App() {
                     <div className="space-y-1">
                       {/* Header Row (Desktop only) */}
                       <div className="hidden sm:grid grid-cols-12 gap-4 pb-3 border-b border-stone-100 text-[10px] font-black text-stone-400 uppercase tracking-widest px-2">
-                        <div className="col-span-4">Class / Grade</div>
-                        <div className="col-span-4">Venue / Center</div>
-                        <div className="col-span-4">Date & Time</div>
+                        <div className="col-span-6">Class / Grade</div>
+                        <div className="col-span-6">Exam Venue</div>
                       </div>
 
                       <div className="divide-y divide-stone-100">
                         {classesList.map((cls) => (
                           <div key={cls.grade} className="py-4 px-2 grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4 items-center">
                             {/* Grade & Status */}
-                            <div className="col-span-1 sm:col-span-4">
+                            <div className="col-span-1 sm:col-span-6">
                               <h3 className="font-extrabold text-stone-850 text-base leading-tight">
                                 {cls.grade}
                               </h3>
@@ -3448,17 +3501,15 @@ export default function App() {
                             </div>
                             
                             {/* Venue */}
-                            <div className="col-span-1 sm:col-span-4">
-                              <span className="text-[9px] font-black text-stone-400 uppercase tracking-widest sm:hidden block mb-0.5">Venue / Center</span>
-                              <span className="font-semibold text-stone-700 text-sm">{cls.examVenue || "Not Assigned"}</span>
-                            </div>
-
-                            {/* Date & Time */}
-                            <div className="col-span-1 sm:col-span-4">
-                              <span className="text-[9px] font-black text-stone-400 uppercase tracking-widest sm:hidden block mb-0.5">Date & Time</span>
-                              <span className="font-semibold text-stone-700 text-sm">
-                                {cls.examDate !== "TBA" ? `${cls.examDate} @ ${cls.examTime}` : "TBA"}
-                              </span>
+                            <div className="col-span-1 sm:col-span-6">
+                              <span className="text-[9px] font-black text-stone-400 uppercase tracking-widest sm:hidden block mb-0.5">Exam Venue</span>
+                              {cls.examVenue === "Online Portal" ? (
+                                <span className="font-semibold text-stone-750 text-sm bg-green-50 text-green-700 px-2 py-0.5 rounded">Online Portal</span>
+                              ) : (
+                                <span className="font-semibold text-stone-700 text-sm">
+                                  {cls.examVenue || "TBA"}
+                                </span>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -3618,13 +3669,13 @@ export default function App() {
             {/* Page Header */}
             <div className="text-center max-w-3xl mx-auto space-y-4">
               <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-black text-amber-700 bg-amber-50 border border-amber-100 uppercase tracking-widest">
-                शैक्षणिक पाठ्यक्रम (Curriculum)
+                Curriculum
               </span>
               <h1 className="text-4xl md:text-5xl font-extrabold text-stone-900 tracking-tight">
-                कक्षाएं <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-600 to-amber-800">1 से 12</span>
+                Classes <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-600 to-amber-800">1 to 12</span>
               </h1>
               <p className="text-stone-500 font-medium text-base md:text-lg">
-                प्राथमिक, माध्यमिक और उच्च माध्यमिक स्तर के लिए जैन संस्कारों और सिद्धांतों का सुनियोजित पाठ्यक्रम।
+                Structured curriculum of Jain values and principles for primary, middle, and senior secondary levels.
               </p>
             </div>
 
@@ -3648,9 +3699,9 @@ export default function App() {
 
               const sections = [
                 {
-                  title: "प्राथमिक स्तर (Primary Stage)",
-                  subtitle: "कक्षा 1 से 5 (Classes 1 to 5)",
-                  description: "बुनियादी जैन संस्कार, नीति कथाएं और नैतिक मूल्य।",
+                  title: "Primary Stage",
+                  subtitle: "Classes 1 to 5",
+                  description: "Basic Jain values, moral stories, and ethics.",
                   topics: "Basic Jain Sanskar, Navkar Mantra, Moral Values, Stories",
                   classes: primaryClasses,
                   bgGrad: "from-amber-50 to-orange-50/30",
@@ -3658,9 +3709,9 @@ export default function App() {
                   badgeCol: "bg-amber-100 text-amber-800",
                 },
                 {
-                  title: "माध्यमिक स्तर (Middle Stage)",
-                  subtitle: "कक्षा 6 से 8 (Classes 6 to 8)",
-                  description: "जैन भूगोल, तत्वज्ञान की शुरुआत और महान आत्माओं की जीवनियां।",
+                  title: "Middle Stage",
+                  subtitle: "Classes 6 to 8",
+                  description: "Jain geography, introduction to philosophy (Tattvagyan), and biographies of great souls.",
                   topics: "Jain Geography, Intro to Tatva Gyan, Biographies of Great Souls",
                   classes: middleClasses,
                   bgGrad: "from-rose-50 to-orange-50/20",
@@ -3668,9 +3719,9 @@ export default function App() {
                   badgeCol: "bg-rose-100 text-rose-850",
                 },
                 {
-                  title: "उच्चतर स्तर (Senior Stage)",
-                  subtitle: "कक्षा 9 से 12 (Classes 9 to 12)",
-                  description: "छह द्रव्य, सात तत्व, कर्म सिद्धांत और गहन जैन दर्शन।",
+                  title: "Senior Stage",
+                  subtitle: "Classes 9 to 12",
+                  description: "Six Dravyas, Seven Tattvas, Karma Theory, and in-depth Jain philosophy.",
                   topics: "Six Dravya, Seven Tatva, Karma Theory, Deep Philosophy",
                   classes: seniorClasses,
                   bgGrad: "from-purple-50 to-indigo-50/20",
@@ -3750,17 +3801,16 @@ export default function App() {
                                     ) : (
                                       <p className="text-xs text-stone-400 italic">No custom subjects configured.</p>
                                     )}
-                                  </div>
-
-                                  {/* Exam Info */}
-                                  <div className="bg-stone-50/50 p-4 rounded-xl border border-stone-100 space-y-2 text-xs">
-                                    <div className="flex justify-between">
-                                      <span className="text-stone-400 font-bold uppercase text-[9px] tracking-wider">Exam Date</span>
-                                      <span className="text-stone-750 font-semibold">{cls.examDate !== "TBA" ? cls.examDate : "TBA"}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span className="text-stone-400 font-bold uppercase text-[9px] tracking-wider">Center</span>
-                                      <span className="text-stone-750 font-semibold truncate max-w-[150px]">{cls.examVenue || "TBA"}</span>
+                                    {/* Exam Info */}
+                                    <div className="bg-stone-50/50 p-4 rounded-xl border border-stone-100 space-y-2 text-xs">
+                                      <div className="flex justify-between">
+                                        <span className="text-stone-400 font-bold uppercase text-[9px] tracking-wider">Exam Date</span>
+                                        <span className="text-stone-750 font-semibold">{cls.examDate !== "TBA" ? cls.examDate : "TBA"}</span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-stone-400 font-bold uppercase text-[9px] tracking-wider">Exam Venue</span>
+                                        <span className="text-stone-750 font-semibold truncate max-w-[150px]">{cls.examVenue || "TBA"}</span>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>

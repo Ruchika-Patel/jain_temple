@@ -14,6 +14,7 @@ import {
   CheckCircle,
   Plus,
   Trash,
+  MapPin,
 } from "lucide-react";
 import StatusModal from "@/components/StatusModal";
 
@@ -47,6 +48,8 @@ export default function AdminExamsPage() {
   const [negativeMarking, setNegativeMarking] = useState(false);
   const [negativeMarks, setNegativeMarks] = useState(0.25);
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [venue, setVenue] = useState("Not Assigned");
+  const [temples, setTemples] = useState<any[]>([]);
 
   // Status Modal
   const [modal, setModal] = useState<{
@@ -96,10 +99,23 @@ export default function AdminExamsPage() {
     }
   };
 
+  const fetchTemples = async () => {
+    try {
+      const res = await fetch("/api/temples");
+      const data = await res.json();
+      if (data.success) {
+        const verified = data.data.filter((t: any) => t.status === "verified");
+        setTemples(verified);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     const init = async () => {
       setLoading(true);
-      await Promise.all([fetchExams(), fetchClasses()]);
+      await Promise.all([fetchExams(), fetchClasses(), fetchTemples()]);
       setLoading(false);
     };
     init();
@@ -128,6 +144,7 @@ export default function AdminExamsPage() {
     setNegativeMarking(false);
     setNegativeMarks(0.25);
     setQuestions([]);
+    setVenue("Not Assigned");
     setIsAddEditModalOpen(true);
   };
 
@@ -141,6 +158,7 @@ export default function AdminExamsPage() {
     setExamType(exam.examType || "online");
     setNegativeMarking(exam.negativeMarking || false);
     setNegativeMarks(exam.negativeMarks || 0.25);
+    setVenue(exam.venue || "Not Assigned");
     setQuestions(
       (exam.questions || []).map((q: any) => ({
         ...q,
@@ -211,6 +229,7 @@ export default function AdminExamsPage() {
       negativeMarking,
       negativeMarks,
       questions,
+      venue,
     };
 
     try {
@@ -360,6 +379,12 @@ export default function AdminExamsPage() {
                         {exam.questions?.length || 0} Questions • {exam.questions?.reduce((acc: number, q: any) => acc + (q.marks || 1), 0) || 0} Total Marks
                       </span>
                     </div>
+                    {exam.examType === "offline" && (
+                      <div className="flex items-center gap-2">
+                        <MapPin size={14} className="text-orange-600" />
+                        <span>Venue: {exam.venue || "Not Assigned"}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -506,6 +531,26 @@ export default function AdminExamsPage() {
                     </button>
                   </div>
                 </div>
+
+                {examType === "offline" && (
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="text-[10px] font-black text-stone-500 uppercase ml-1">
+                      Exam Venue (Temple Name)
+                    </label>
+                    <select
+                      value={venue}
+                      onChange={(e) => setVenue(e.target.value)}
+                      className="w-full px-5 py-2.5 bg-white border border-stone-300 rounded-xl outline-none focus:ring-2 focus:ring-amber-500 text-stone-900 font-semibold text-sm"
+                    >
+                      <option value="Not Assigned">Not Assigned</option>
+                      {temples.map((t) => (
+                        <option key={t._id || t.id} value={t.name}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 {examType === "online" && (
                   <>

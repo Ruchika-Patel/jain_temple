@@ -54,10 +54,17 @@ export async function GET(req: Request) {
                 baseClass.examTime = examForClass.time || "TBA";
                 baseClass.examSubject = examForClass.subject || "";
                 
-                // If it is an online exam, show Online Portal as venue
+                // If it is an online exam, show Online Portal as venue, else show scheduled venue
                 if (examForClass.examType === "online") {
                     baseClass.examVenue = "Online Portal";
+                } else {
+                    baseClass.examVenue = examForClass.venue || "Not Assigned";
                 }
+            } else {
+                baseClass.examVenue = "Not Assigned";
+                baseClass.examDate = "TBA";
+                baseClass.examTime = "TBA";
+                baseClass.examSubject = "";
             }
 
             return baseClass;

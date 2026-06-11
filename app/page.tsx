@@ -382,7 +382,7 @@ export default function App() {
     }
 
     if (!fileData) {
-      alert(`No syllabus file is uploaded for ${cls.grade} yet.`);
+      alert(`इस कक्षा (${cls.grade}) के लिए वर्तमान में सिलेबस उपलब्ध नहीं है। \n(No syllabus file is uploaded for ${cls.grade} yet.)`);
       return;
     }
 
@@ -415,7 +415,7 @@ export default function App() {
       URL.revokeObjectURL(link.href);
     } catch (error) {
       console.error("Download error:", error);
-      alert("Error processing the syllabus download.");
+      alert("सिलेबस डाउनलोड करने में त्रुटि हुई। \n(Error processing the syllabus download.)");
     }
   };
 
@@ -1360,11 +1360,14 @@ export default function App() {
                       <Star size={24} className="fill-amber-500 text-amber-500" />
                     </div>
                     <h2 className="text-2xl font-extrabold text-stone-900 tracking-tight leading-tight">
-                      Our Vision & <br />
-                      <span className="text-amber-700 text-lg font-bold">Mission</span>
+                      हमारा संकल्प <br />
+                      <span className="text-amber-700 text-lg font-bold">Our Vision & Mission</span>
                     </h2>
                   </div>
                   <p className="text-stone-600 text-sm leading-relaxed font-semibold">
+                    जैन संस्कारों और शिक्षा को अगली पीढ़ी तक पहुंचाना ही हमारा परम लक्ष्य है।
+                  </p>
+                  <p className="text-stone-500 text-xs leading-relaxed">
                     To preserve and pass down Jain values, rituals, and philosophical education to the next generation through structured curriculum and community connects.
                   </p>
                 </div>
@@ -1373,8 +1376,8 @@ export default function App() {
               {/* Quick Links */}
               <div className="lg:col-span-2 bg-white/60 backdrop-blur-md px-3.5 py-6 sm:p-8 rounded-[2.5rem] shadow-sm border border-stone-100/80 space-y-6">
                 <h2 className="text-2xl font-extrabold text-stone-900 tracking-tight">
-                  Quick Links <br />
-                  <span className="text-stone-400 text-xs font-bold uppercase tracking-wider">Portal Actions</span>
+                  त्वरित लिंक <br />
+                  <span className="text-stone-400 text-xs font-bold uppercase tracking-wider">Quick Links / Portal Actions</span>
                 </h2>
 
                 <div className="grid grid-cols-3 gap-2 sm:gap-6">
@@ -1383,12 +1386,13 @@ export default function App() {
                     onClick={() => router.push("/user/login?mode=register")}
                     className="bg-stone-50/80 border border-stone-100 hover:border-amber-500 rounded-2xl sm:rounded-3xl px-2.5 py-3.5 sm:p-6 cursor-pointer hover:-translate-y-1 transition duration-300 flex flex-col justify-between group h-full min-h-[110px] sm:min-h-[160px]"
                   >
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
-                      <PlusCircle className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-amber-500 to-orange-600 text-white rounded-2xl flex items-center justify-center shadow-md shadow-amber-500/10 group-hover:shadow-lg group-hover:shadow-amber-500/30 group-hover:scale-110 transition-all duration-300">
+                      <PlusCircle className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
                     <div>
                       <h3 className="font-extrabold text-stone-800 text-[10px] sm:text-base leading-tight tracking-tight sm:tracking-normal group-hover:text-amber-600 transition">
-                        New Registration
+                        नया रजिस्ट्रेशन <br />
+                        <span className="text-[9px] sm:text-xs text-stone-400 font-bold uppercase tracking-wide">New Registration</span>
                       </h3>
                     </div>
                   </div>
@@ -1398,12 +1402,13 @@ export default function App() {
                     onClick={() => setIsExamVenueModalOpen(true)}
                     className="bg-stone-50/80 border border-stone-100 hover:border-amber-500 rounded-2xl sm:rounded-3xl px-2.5 py-3.5 sm:p-6 cursor-pointer hover:-translate-y-1 transition duration-300 flex flex-col justify-between group h-full min-h-[110px] sm:min-h-[160px]"
                   >
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
-                      <MapPin className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-amber-500 to-orange-600 text-white rounded-2xl flex items-center justify-center shadow-md shadow-amber-500/10 group-hover:shadow-lg group-hover:shadow-amber-500/30 group-hover:scale-110 transition-all duration-300">
+                      <MapPin className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
                     <div>
                       <h3 className="font-extrabold text-stone-800 text-[10px] sm:text-base leading-tight tracking-tight sm:tracking-normal group-hover:text-amber-600 transition">
-                        Exam Venues
+                        एग्जाम सेंटर सूची <br />
+                        <span className="text-[9px] sm:text-xs text-stone-400 font-bold uppercase tracking-wide">Exam Venues</span>
                       </h3>
                     </div>
                   </div>
@@ -1413,12 +1418,13 @@ export default function App() {
                     onClick={() => router.push("/user/login")}
                     className="bg-stone-50/80 border border-stone-100 hover:border-amber-500 rounded-2xl sm:rounded-3xl px-2.5 py-3.5 sm:p-6 cursor-pointer hover:-translate-y-1 transition duration-300 flex flex-col justify-between group h-full min-h-[110px] sm:min-h-[160px]"
                   >
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
-                      <User className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-amber-500 to-orange-600 text-white rounded-2xl flex items-center justify-center shadow-md shadow-amber-500/10 group-hover:shadow-lg group-hover:shadow-amber-500/30 group-hover:scale-110 transition-all duration-300">
+                      <User className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
                     <div>
                       <h3 className="font-extrabold text-stone-800 text-[10px] sm:text-base leading-tight tracking-tight sm:tracking-normal group-hover:text-amber-600 transition">
-                        Student Login
+                        स्टूडेंट लॉगिन <br />
+                        <span className="text-[9px] sm:text-xs text-stone-400 font-bold uppercase tracking-wide">Student Login</span>
                       </h3>
                     </div>
                   </div>
@@ -1430,8 +1436,8 @@ export default function App() {
             <div className="space-y-6 pt-4">
               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pl-2">
                 <div className="space-y-1">
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black text-amber-700 bg-amber-50/60 backdrop-blur-sm border border-amber-100/60 uppercase tracking-widest">
-                    <BookOpen size={10} className="text-amber-550" /> Pathshala Curriculum
+                  <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[10px] font-black text-amber-700 bg-amber-50/65 backdrop-blur-sm border border-amber-100/60 uppercase tracking-widest animate-none">
+                    <BookOpen size={12} className="text-amber-600 animate-pulse" /> Pathshala Curriculum
                   </span>
                   <h2 className="text-2xl font-black text-stone-900 uppercase tracking-tight">
                     Pathshala Classes 1 to 12
@@ -1458,19 +1464,17 @@ export default function App() {
                   const gradeName = `${n}${suffix} Class`;
                   
                   // Premium Category Colors mapping
-                  let cardHoverTheme = "hover:border-amber-400 hover:shadow-amber-100/50 hover:bg-amber-50/20";
-                  let iconTheme = "text-amber-600 bg-amber-50 border-amber-100";
+                  let cardHoverTheme = "hover:border-amber-400 hover:shadow-lg hover:shadow-amber-500/5 hover:bg-amber-50/10";
+                  let iconTheme = "text-white bg-gradient-to-br from-amber-500 to-orange-600 shadow-md shadow-amber-500/15 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-amber-500/35";
                   let labelText = "Primary";
                   let dotTheme = "bg-amber-500";
 
                   if (n >= 6 && n <= 8) {
-                    cardHoverTheme = "hover:border-rose-400 hover:shadow-rose-100/50 hover:bg-rose-50/20";
-                    iconTheme = "text-rose-600 bg-rose-50 border-rose-100";
+                    cardHoverTheme = "hover:border-rose-400 hover:shadow-lg hover:shadow-rose-500/5 hover:bg-rose-50/10";
                     labelText = "Middle";
                     dotTheme = "bg-rose-500";
                   } else if (n >= 9 && n <= 12) {
-                    cardHoverTheme = "hover:border-purple-400 hover:shadow-purple-100/50 hover:bg-purple-50/20";
-                    iconTheme = "text-purple-600 bg-purple-50 border-purple-100";
+                    cardHoverTheme = "hover:border-purple-400 hover:shadow-lg hover:shadow-purple-500/5 hover:bg-purple-50/10";
                     labelText = "Senior";
                     dotTheme = "bg-purple-500";
                   }
@@ -1500,8 +1504,8 @@ export default function App() {
                       <div className="absolute -right-3 -bottom-3 w-10 h-10 rounded-full bg-stone-50 group-hover:scale-[3] group-hover:bg-white/50 transition-all duration-500 -z-10" />
 
                       <div className="flex justify-between items-center w-full">
-                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center border transition-all duration-300 group-hover:scale-110 ${iconTheme}`}>
-                          <BookOpen size={15} />
+                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-300 ${iconTheme}`}>
+                          <BookOpen size={18} />
                         </div>
                         <span className="text-[9px] font-bold text-stone-400 group-hover:text-stone-500 transition-colors uppercase tracking-wider">
                           {labelText}
@@ -1529,7 +1533,7 @@ export default function App() {
               <h2 className="text-2xl font-black text-stone-900 uppercase tracking-tight pl-2">
                 Verified Temples Directory
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {verifiedTemples.map((temple, index) => (
                 <div
                   key={temple._id || temple.id}
@@ -1539,9 +1543,9 @@ export default function App() {
                     setView("detail");
                     window.scrollTo(0, 0);
                   }}
-                  className="bg-white rounded-[2.5rem] overflow-hidden shadow-sm hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-550 border border-stone-100 flex flex-col cursor-pointer group h-full justify-between"
+                  className="bg-white rounded-[2rem] overflow-hidden shadow-sm hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-550 border border-stone-100 flex flex-col cursor-pointer group h-full justify-between"
                 >
-                  <div className="h-64 relative overflow-hidden shrink-0">
+                  <div className="h-48 relative overflow-hidden shrink-0">
                     <img
                       src={temple.images[0]}
                       alt={temple.name}
@@ -1553,10 +1557,10 @@ export default function App() {
                       </span>
                     </div>
                   </div>
-                  <div className="p-7 flex flex-col justify-between flex-1 space-y-5">
-                    <div className="space-y-3">
+                  <div className="p-5 flex flex-col justify-between flex-1 space-y-4">
+                    <div className="space-y-3.5">
                       <div className="flex justify-between items-start gap-2">
-                        <h3 className="text-xl font-extrabold text-stone-800 leading-snug group-hover:text-amber-600 transition-colors duration-300">
+                        <h3 className="text-base font-extrabold text-stone-850 leading-snug group-hover:text-amber-600 transition-colors duration-300">
                           {temple.name}
                         </h3>
                         <div className="bg-green-50 p-1 rounded-full shrink-0 group-hover:scale-110 transition-transform duration-300">
@@ -3556,7 +3560,7 @@ export default function App() {
                 <div className="flex justify-between items-center mb-6 pb-4 border-b border-stone-100">
                   <div>
                     <h2 className="text-2xl font-black text-stone-900 uppercase tracking-tighter">
-                      Exam Centers
+                      एग्जाम सेंटर सूची / Exam Centers
                     </h2>
                     <p className="text-stone-400 text-xs font-bold uppercase tracking-wider mt-0.5">
                       Exam Venues & Schedules
@@ -3770,13 +3774,14 @@ export default function App() {
             {/* Page Header */}
             <div className="text-center max-w-3xl mx-auto space-y-4">
               <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-black text-amber-700 bg-amber-50 border border-amber-100 uppercase tracking-widest">
-                Curriculum
+                शैक्षणिक पाठ्यक्रम (Curriculum)
               </span>
               <h1 className="text-4xl md:text-5xl font-extrabold text-stone-900 tracking-tight">
-                Classes <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-600 to-amber-800">1 to 12</span>
+                कक्षाएं <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-600 to-amber-800">1 से 12 (Classes 1 to 12)</span>
               </h1>
               <p className="text-stone-500 font-medium text-base md:text-lg">
-                Structured curriculum of Jain values and principles for primary, middle, and senior secondary levels.
+                प्राथमिक, माध्यमिक और उच्च माध्यमिक स्तर के लिए जैन संस्कारों और सिद्धांतों का सुनियोजित पाठ्यक्रम। <br />
+                <span className="text-sm text-stone-400 font-normal">(Structured curriculum of Jain values and principles for primary, middle, and senior secondary levels.)</span>
               </p>
             </div>
 
@@ -3800,9 +3805,9 @@ export default function App() {
 
               const sections = [
                 {
-                  title: "Primary Stage",
-                  subtitle: "Classes 1 to 5",
-                  description: "Basic Jain values, moral stories, and ethics.",
+                  title: "प्राथमिक स्तर (Primary Stage)",
+                  subtitle: "कक्षा 1 से 5 (Classes 1 to 5)",
+                  description: "बुनियादी जैन संस्कार, नीति कथाएं और नैतिक मूल्य। (Basic Jain values, moral stories, and ethics.)",
                   topics: "Basic Jain Sanskar, Navkar Mantra, Moral Values, Stories",
                   classes: primaryClasses,
                   bgGrad: "from-amber-50 to-orange-50/30",
@@ -3810,9 +3815,9 @@ export default function App() {
                   badgeCol: "bg-amber-100 text-amber-800",
                 },
                 {
-                  title: "Middle Stage",
-                  subtitle: "Classes 6 to 8",
-                  description: "Jain geography, introduction to philosophy (Tattvagyan), and biographies of great souls.",
+                  title: "माध्यमिक स्तर (Middle Stage)",
+                  subtitle: "कक्षा 6 से 8 (Classes 6 to 8)",
+                  description: "जैन भूगोल, तत्वज्ञान की शुरुआत और महान आत्माओं की जीवनियां। (Jain geography, introduction to philosophy (Tattvagyan), and biographies of great souls.)",
                   topics: "Jain Geography, Intro to Tatva Gyan, Biographies of Great Souls",
                   classes: middleClasses,
                   bgGrad: "from-rose-50 to-orange-50/20",
@@ -3820,9 +3825,9 @@ export default function App() {
                   badgeCol: "bg-rose-100 text-rose-850",
                 },
                 {
-                  title: "Senior Stage",
-                  subtitle: "Classes 9 to 12",
-                  description: "Six Dravyas, Seven Tattvas, Karma Theory, and in-depth Jain philosophy.",
+                  title: "उच्चतर स्तर (Senior Stage)",
+                  subtitle: "कक्षा 9 से 12 (Classes 9 to 12)",
+                  description: "छह द्रव्य, सात तत्व, कर्म सिद्धांत और गहन जैन दर्शन। (Six Dravyas, Seven Tattvas, Karma Theory, and in-depth Jain philosophy.)",
                   topics: "Six Dravya, Seven Tatva, Karma Theory, Deep Philosophy",
                   classes: seniorClasses,
                   bgGrad: "from-purple-50 to-indigo-50/20",
@@ -3877,9 +3882,14 @@ export default function App() {
                               >
                                 <div className="space-y-4">
                                   <div className="flex justify-between items-center">
-                                    <h3 className="text-lg font-black text-stone-850 group-hover:text-amber-700 transition-colors">
-                                      {cls.grade}
-                                    </h3>
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/15 shadow-sm group-hover:scale-110 transition-transform duration-300">
+                                        <BookOpen size={16} />
+                                      </div>
+                                      <h3 className="text-lg font-black text-stone-850 group-hover:text-amber-700 transition-colors">
+                                        {cls.grade}
+                                      </h3>
+                                    </div>
                                     <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
                                       cls.status === "Active" ? "bg-green-50 text-green-700 border border-green-100" : "bg-stone-50 text-stone-500 border"
                                     }`}>
@@ -4074,7 +4084,7 @@ export default function App() {
             <div className="col-span-1 md:col-span-2 space-y-6">
               <div className="flex items-center">
                 <img
-                  src="/assets/Jain_logo.svg"
+                  src="/assets/Jain_logo.png"
                   alt="Logo"
                   className="w-10 h-10 object-contain mr-3 opacity-80"
                 />

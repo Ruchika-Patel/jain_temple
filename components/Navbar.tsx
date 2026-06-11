@@ -81,7 +81,7 @@ const Navbar: React.FC<NavbarProps> = ({
                         }}
                     >
                         <img
-                            src="/assets/Jain_logo.svg"
+                            src="/assets/Jain_logo.png"
                             alt="Logo"
                             className="w-10 h-10 object-contain mr-3 group-hover:scale-110 transition-transform"
                         />

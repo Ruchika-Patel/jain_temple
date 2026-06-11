@@ -16,9 +16,9 @@ export const metadata: Metadata = {
   title: "Jain Pathshala",
   description: "Dedicated to fostering unity within the Jain community by providing a verified digital infrastructure for our sacred temples worldwide.",
   icons: {
-    icon: "/assets/Jain_logo.svg",
-    shortcut: "/assets/Jain_logo.svg",
-    apple: "/assets/Jain_logo.svg",
+    icon: "/assets/Jain_logo.png",
+    shortcut: "/assets/Jain_logo.png",
+    apple: "/assets/Jain_logo.png",
   },
 };
 

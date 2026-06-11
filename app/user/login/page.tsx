@@ -172,12 +172,7 @@ function UserAuthContent() {
         );
         return;
       }
-      const hasPaid = localStorage.getItem("payment_status") === "success";
-      if (hasPaid) {
-        handleFinalRegister(localStorage.getItem("last_payment_id") || "");
-      } else {
-        handlePayment();
-      }
+      handleFinalRegister("FREE");
     }
   };
 
@@ -256,7 +251,7 @@ function UserAuthContent() {
         studentClass: formData.studentClass,
         templeName: formData.templeName || "General",
         paymentId: razorpayId,
-        amount: 500,
+        amount: 0,
         paid: true,
         phone: formData.phone,
         address: formData.address,
@@ -568,7 +563,7 @@ function UserAuthContent() {
             ) : isLogin ? (
               "Login Now"
             ) : (
-              "Pay ₹500 & Register"
+              "Register Now"
             )}
           </button>
         </form>

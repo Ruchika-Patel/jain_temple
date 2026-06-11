@@ -29,6 +29,8 @@ import {
   ChevronRight,
   Megaphone,
   Users,
+  BookOpen,
+  Download,
 } from "lucide-react";
 import StatusModal from "@/components/StatusModal";
 import Navbar from "@/components/Navbar";
@@ -87,7 +89,16 @@ interface Temple {
   rating: number; // Average rating
 }
 
-type ViewState = "home" | "register" | "admin" | "detail";
+interface Banner {
+  _id: string;
+  imageUrl: string;
+  title?: string;
+  link?: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+type ViewState = "home" | "register" | "admin" | "detail" | "classes";
 
 // --- Mock Data ---
 
@@ -248,8 +259,16 @@ export default function App() {
   });
 
   const [activeAdminSubView, setActiveAdminSubView] = useState<
-    "temples" | "events"
+    "temples" | "events" | "banners"
   >("temples");
+  const [banners, setBanners] = useState<Banner[]>([]);
+  const [bannerData, setBannerData] = useState({
+    title: "",
+    link: "",
+    isActive: true,
+    imageUrl: "",
+  });
+  const [currentSlide, setCurrentSlide] = useState(0);
   const [editingEvent, setEditingEvent] = useState<{
     templeId: string;
     eventId: string;
@@ -261,6 +280,8 @@ export default function App() {
   );
 
   const [editingTempleId, setEditingTempleId] = useState<string | null>(null);
+  const [classesList, setClassesList] = useState<any[]>([]);
+  const [isExamVenueModalOpen, setIsExamVenueModalOpen] = useState(false);
 
   const [modal, setModal] = useState<{
     isOpen: boolean;
@@ -323,8 +344,84 @@ export default function App() {
     }
   };
 
+  const fetchBanners = async () => {
+    try {
+      const res = await fetch(`/api/banners?t=${Date.now()}`);
+      const data = await res.json();
+      if (data.success) {
+        setBanners(data.data);
+      }
+    } catch (err) {
+      console.error("[Fetch Banners] Error:", err);
+    }
+  };
+
+  const fetchClasses = async () => {
+    try {
+      const res = await fetch(`/api/classes?t=${Date.now()}`);
+      const data = await res.json();
+      if (data.success) {
+        setClassesList(data.data);
+      }
+    } catch (err) {
+      console.error("[Fetch Classes] Error:", err);
+    }
+  };
+
+  const downloadSyllabus = (cls: any) => {
+    let fileData = "";
+    let fileName = `${cls.grade.replace(/\s+/g, "_")}_Syllabus.pdf`;
+
+    if (cls.syllabi && cls.syllabi.length > 0) {
+      fileData = cls.syllabi[0].fileData;
+      fileName = cls.syllabi[0].fileName || fileName;
+    } else if (cls.syllabus) {
+      fileData = cls.syllabus;
+      fileName = cls.fileName || fileName;
+    }
+
+    if (!fileData) {
+      alert(`इस कक्षा (${cls.grade}) के लिए वर्तमान में सिलेबस उपलब्ध नहीं है। \n(No syllabus file is uploaded for ${cls.grade} yet.)`);
+      return;
+    }
+
+    try {
+      let cleanBase64 = fileData;
+      let mimeType = "application/pdf";
+
+      if (fileData.startsWith("data:")) {
+        const match = fileData.match(/^data:([^;]+);base64,(.+)$/);
+        if (match) {
+          mimeType = match[1];
+          cleanBase64 = match[2];
+        }
+      }
+
+      const byteCharacters = atob(cleanBase64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: mimeType });
+
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+    } catch (error) {
+      console.error("Download error:", error);
+      alert("सिलेबस डाउनलोड करने में त्रुटि हुई। \n(Error processing the syllabus download.)");
+    }
+  };
+
   useEffect(() => {
     fetchTemples();
+    fetchBanners();
+    fetchClasses();
 
     // Check for deep links (e.g., from Add Class/Broadcast back buttons)
     const params = new URLSearchParams(window.location.search);
@@ -343,9 +440,24 @@ export default function App() {
     }
   }, []);
 
+  useEffect(() => {
+    if (view !== "home") return;
+    const activeBanners = banners.filter((b) => b.isActive);
+    if (activeBanners.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % activeBanners.length);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [banners, view]);
+
   // Registration Form State
   const [formData, setFormData] = useState({
     name: "",
+    centreCode: "",
+    capacity: 0,
+    incharge: "",
     country: "India",
     state: "",
     city: "",
@@ -566,6 +678,9 @@ export default function App() {
             setEditingTempleId(null);
             setFormData({
               name: "",
+              centreCode: "",
+              capacity: 0,
+              incharge: "",
               country: "India",
               state: "",
               city: "",
@@ -708,9 +823,81 @@ export default function App() {
     }
   };
 
+  const handleAddBanner = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bannerData.imageUrl) {
+      showModal("error", "Error", "Please select a banner image.");
+      return;
+    }
+
+    showModal("loading", "Adding...", "Uploading banner to database");
+    try {
+      const response = await fetch("/api/banners", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bannerData),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        showModal("success", "Banner Added", "Banner added successfully! 📸");
+        setBannerData({ title: "", link: "", isActive: true, imageUrl: "" });
+        fetchBanners();
+      } else {
+        showModal("error", "Failed", data.error || "Failed to add banner.");
+      }
+    } catch (err) {
+      console.error("Add Banner Error:", err);
+      showModal("error", "Error", "Connection failed.");
+    }
+  };
+
+  const handleToggleBanner = async (id: string, currentActive: boolean) => {
+    try {
+      const response = await fetch("/api/banners", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, isActive: !currentActive }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        showModal("success", "Updated", "Banner status updated! ✅");
+        fetchBanners();
+      } else {
+        showModal("error", "Failed", data.error || "Failed to update banner.");
+      }
+    } catch (err) {
+      console.error("Toggle Banner Error:", err);
+      showModal("error", "Error", "Connection failed.");
+    }
+  };
+
+  const handleDeleteBanner = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this banner?")) return;
+
+    showModal("loading", "Deleting...", "Deleting banner");
+    try {
+      const response = await fetch(`/api/banners?id=${id}`, {
+        method: "DELETE",
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        showModal("success", "Deleted", "Banner removed successfully! 🗑️");
+        fetchBanners();
+      } else {
+        showModal("error", "Failed", data.error || "Delete failed");
+      }
+    } catch (err) {
+      console.error("Delete Banner Error:", err);
+      showModal("error", "Error", "Connection failed.");
+    }
+  };
+
   const handleImageUpload = (
     e: React.ChangeEvent<HTMLInputElement>,
-    type: "event" | "edit-event" | "temple-register",
+    type: "event" | "edit-event" | "temple-register" | "banner",
   ) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -720,8 +907,9 @@ export default function App() {
         const img = new Image();
         img.onload = () => {
           const canvas = document.createElement("canvas");
-          const MAX_WIDTH = 600; // Aggressive limit
-          const MAX_HEIGHT = 600;
+          const isBanner = type === "banner";
+          const MAX_WIDTH = isBanner ? 1920 : 600;
+          const MAX_HEIGHT = isBanner ? 1080 : 600;
           let width = img.width;
           let height = img.height;
 
@@ -742,8 +930,8 @@ export default function App() {
           const ctx = canvas.getContext("2d");
           ctx?.drawImage(img, 0, 0, width, height);
 
-          // Increased compression (0.5 q)
-          const dataUrl = canvas.toDataURL("image/jpeg", 0.5);
+          // Increased compression (0.5 q for normal, 0.85 q for banners to keep it clear)
+          const dataUrl = canvas.toDataURL("image/jpeg", isBanner ? 0.85 : 0.5);
           const sizeKB = Math.round((dataUrl.length * 0.75) / 1024);
           console.log(`Compressed image size: ${sizeKB} KB`);
 
@@ -759,6 +947,8 @@ export default function App() {
               ...prev,
               images: [...prev.images, dataUrl],
             }));
+          } else if (type === "banner") {
+            setBannerData((prev) => ({ ...prev, imageUrl: dataUrl }));
           }
         };
         img.onerror = () => {
@@ -981,49 +1171,148 @@ export default function App() {
         setSelectedTempleId={setSelectedTempleId}
       />
 
+      {/* Premium Banner Carousel (Full width, no left/right/top space) */}
+      {view === "home" && !selectedTempleId && banners.filter((b) => b.isActive).length > 0 && (
+        <div className="w-full relative overflow-hidden aspect-[3/1] group">
+          <div
+            className="absolute inset-0 flex transition-transform duration-700 ease-in-out"
+            style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+          >
+            {banners
+              .filter((b) => b.isActive)
+              .map((banner) => (
+                <div key={banner._id} className="w-full h-full shrink-0 relative">
+                  <img
+                    src={banner.imageUrl}
+                    alt={banner.title || "Banner"}
+                    className="w-full h-full object-fill"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent flex flex-col justify-end p-6 md:p-16">
+                    {banner.title && (
+                      <h2 className="text-xl md:text-3xl lg:text-5xl font-black text-white tracking-tight drop-shadow-md max-w-4xl leading-tight">
+                        {banner.title}
+                      </h2>
+                    )}
+                    {banner.link && (
+                      <a
+                        href={banner.link}
+                        target={banner.link.startsWith("http") ? "_blank" : "_self"}
+                        rel="noopener noreferrer"
+                        className="mt-4 inline-flex items-center gap-1 bg-white text-stone-900 font-bold px-5 py-2.5 rounded-xl text-xs md:text-sm w-fit hover:bg-stone-100 transition shadow-sm active:scale-95"
+                      >
+                        Learn More <ArrowRight size={14} />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+          </div>
+
+          {banners.filter((b) => b.isActive).length > 1 && (
+            <>
+              <button
+                onClick={() =>
+                  setCurrentSlide(
+                    (prev) =>
+                      (prev - 1 + banners.filter((b) => b.isActive).length) %
+                      banners.filter((b) => b.isActive).length
+                  )
+                }
+                className="absolute left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/80 backdrop-blur text-stone-800 flex items-center justify-center hover:bg-white transition opacity-0 group-hover:opacity-100 shadow-md active:scale-90"
+              >
+                <ChevronLeft size={24} />
+              </button>
+              <button
+                onClick={() =>
+                  setCurrentSlide(
+                    (prev) => (prev + 1) % banners.filter((b) => b.isActive).length
+                  )
+                }
+                className="absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/80 backdrop-blur text-stone-800 flex items-center justify-center hover:bg-white transition opacity-0 group-hover:opacity-100 shadow-md active:scale-90"
+              >
+                <ChevronRight size={24} />
+              </button>
+            </>
+          )}
+
+          {banners.filter((b) => b.isActive).length > 1 && (
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2.5">
+              {banners
+                .filter((b) => b.isActive)
+                .map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setCurrentSlide(idx)}
+                    className={`w-2.5 h-2.5 rounded-full transition-all ${
+                      idx === currentSlide
+                        ? "bg-white w-7"
+                        : "bg-white/50 hover:bg-white/80"
+                    }`}
+                  />
+                ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
         {/* VIEW: DIRECTORY */}
         {view === "home" && (
           <div className="space-y-12 animate-in fade-in duration-700">
+            {/* Ambient Background Glows */}
+            <div className="absolute inset-x-0 top-0 -z-10 h-[1000px] overflow-hidden pointer-events-none">
+              <div className="absolute left-[10%] top-[20%] h-[350px] w-[350px] rounded-full bg-amber-400/5 blur-[120px] animate-pulse duration-[8000ms]" />
+              <div className="absolute right-[20%] top-[30%] h-[300px] w-[300px] rounded-full bg-rose-400/5 blur-[100px] animate-pulse duration-[6000ms]" />
+            </div>
+
             <div className="text-center max-w-4xl mx-auto space-y-6">
+              {/* Premium Badge */}
+              <span className="inline-flex items-center gap-1.5 px-4.5 py-1.5 rounded-full text-[10px] md:text-xs font-black text-amber-700 bg-amber-50/60 backdrop-blur-sm border border-amber-100/60 uppercase tracking-widest animate-fade-in shadow-sm">
+                <Star size={12} className="fill-amber-500 text-amber-500" /> Connecting Devotees Globally
+              </span>
+              
               <h1 className="text-4xl md:text-6xl font-extrabold text-stone-900 tracking-tight leading-[1.1]">
                 Sacred Spaces, <br />
                 <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-600 to-amber-800">
                   Unified Community.
                 </span>
               </h1>
-              <p className="text-stone-500 text-lg md:text-xl font-medium">
-                Find verified Jain Temples, view upcoming events, and connect
-                with management committees.
+              <p className="text-stone-500 text-base md:text-xl font-medium max-w-2xl mx-auto leading-relaxed">
+                Find verified Jain Temples, view upcoming events, and connect with management committees.
               </p>
 
-              <div className="bg-white p-1.5 md:p-6 rounded-3xl shadow-2xl shadow-stone-200/50 border border-stone-100 flex flex-row md:flex-col items-center md:items-stretch gap-0.5 md:gap-4">
-                {/* Search Bar */}
-                <div className="relative flex-[2] md:flex-none">
-                  <div className="absolute inset-y-0 left-0 pl-3 md:pl-4 flex items-center pointer-events-none text-stone-400">
-                    <Search size={16} className="md:w-5 md:h-5" />
+              {/* Redesigned Search & Filter Console */}
+              <div className="bg-white/80 backdrop-blur-md p-3 md:p-4 rounded-[2.5rem] shadow-xl shadow-stone-200/40 border border-stone-100/80 flex flex-col md:flex-row items-center gap-3 md:gap-4 max-w-3xl mx-auto transition-all duration-300 hover:shadow-2xl hover:border-amber-200/50">
+                {/* Search Bar Input */}
+                <div className="relative w-full md:flex-[1.5]">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-stone-400">
+                    <Search size={18} className="text-stone-400" />
                   </div>
                   <input
                     type="text"
-                    placeholder="Search..."
-                    className="block w-full pl-8 md:pl-12 pr-2 md:pr-4 py-1.5 md:py-4 bg-stone-50 border-none rounded-xl md:rounded-2xl focus:ring-2 focus:ring-amber-500 outline-none transition-all placeholder:text-stone-400 text-xs md:text-base"
+                    placeholder="Search by name, city, state..."
+                    className="block w-full pl-11 pr-4 py-3 bg-stone-50/80 border border-stone-100 rounded-2xl focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none transition-all placeholder:text-stone-400 text-sm font-semibold text-stone-700"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
 
-                {/* City/State Filters */}
-                <div className="flex flex-row gap-0.5 md:gap-4 flex-[3] md:flex-none">
+                {/* Divider for desktop */}
+                <div className="hidden md:block w-[1px] h-8 bg-stone-200" />
+
+                {/* Filters Group */}
+                <div className="flex flex-row gap-3 w-full md:w-auto md:min-w-[320px]">
+                  {/* State Filter */}
                   <div className="flex-1 relative">
                     <select
-                      className="w-full pl-2 md:pl-4 pr-6 md:pr-10 py-1.5 md:py-4 bg-stone-50 rounded-xl md:rounded-2xl appearance-none focus:ring-2 focus:ring-amber-500 outline-none text-stone-700 font-medium cursor-pointer text-[10px] md:text-base border-none"
+                      className="w-full pl-3 pr-8 py-3 bg-stone-50/80 border border-stone-100 rounded-2xl appearance-none focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none text-stone-700 font-bold cursor-pointer text-xs md:text-sm transition-all"
                       value={filterState}
                       onChange={(e) => {
                         setFilterState(e.target.value);
                         setFilterCity("");
                       }}
                     >
-                      <option value="">State</option>
+                      <option value="">Select State</option>
                       {availableStates.map((state) => (
                         <option key={state} value={state}>
                           {state}
@@ -1031,20 +1320,20 @@ export default function App() {
                       ))}
                     </select>
                     <ChevronLeft
-                      className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 -rotate-90 text-stone-400 pointer-events-none"
-                      size={12}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 -rotate-90 text-stone-400 pointer-events-none"
+                      size={14}
                     />
                   </div>
+
+                  {/* City Filter */}
                   <div className="flex-1 relative">
                     <select
                       disabled={!filterState}
-                      className="w-full pl-2 md:pl-4 pr-6 md:pr-10 py-1.5 md:py-4 bg-stone-50 rounded-xl md:rounded-2xl appearance-none focus:ring-2 focus:ring-amber-500 outline-none text-stone-700 font-medium disabled:opacity-50 cursor-pointer text-[10px] md:text-base border-none"
+                      className="w-full pl-3 pr-8 py-3 bg-stone-50/80 border border-stone-100 rounded-2xl appearance-none focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none text-stone-700 font-bold disabled:opacity-50 cursor-pointer text-xs md:text-sm transition-all"
                       value={filterCity}
                       onChange={(e) => setFilterCity(e.target.value)}
                     >
-                      <option value="">
-                        City
-                      </option>
+                      <option value="">Select City</option>
                       {availableCities.map((city) => (
                         <option key={city} value={city}>
                           {city}
@@ -1052,15 +1341,105 @@ export default function App() {
                       ))}
                     </select>
                     <ChevronLeft
-                      className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 -rotate-90 text-stone-400 pointer-events-none"
-                      size={12}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 -rotate-90 text-stone-400 pointer-events-none"
+                      size={14}
                     />
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Vision & Mission and Quick Links Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Vision & Mission */}
+              <div className="lg:col-span-1 bg-white/60 backdrop-blur-md p-8 rounded-[2.5rem] shadow-sm hover:shadow-xl transition-all duration-300 border border-stone-100/80 flex flex-col justify-between space-y-6">
+                <div className="space-y-4">
+                  <div className="w-12 h-12 bg-amber-50 text-amber-700 rounded-2xl flex items-center justify-center">
+                    <Star size={24} className="fill-amber-500 text-amber-500" />
+                  </div>
+                  <h2 className="text-2xl font-extrabold text-stone-900 tracking-tight">
+                    हमारा संकल्प <br />
+                    <span className="text-amber-700 text-lg font-bold">Our Vision & Mission</span>
+                  </h2>
+                  <p className="text-stone-600 text-sm leading-relaxed font-semibold">
+                    जैन संस्कारों और शिक्षा को अगली पीढ़ी तक पहुंचाना ही हमारा परम लक्ष्य है।
+                  </p>
+                  <p className="text-stone-500 text-xs leading-relaxed">
+                    To preserve and pass down Jain values, rituals, and philosophical education to the next generation through structured curriculum and community connects.
+                  </p>
+                </div>
+              </div>
+
+              {/* Quick Links */}
+              <div className="lg:col-span-2 bg-white/60 backdrop-blur-md p-8 rounded-[2.5rem] shadow-sm border border-stone-100/80 space-y-6">
+                <h2 className="text-2xl font-extrabold text-stone-900 tracking-tight">
+                  त्वरित लिंक <br />
+                  <span className="text-stone-400 text-xs font-bold uppercase tracking-wider">Quick Actions</span>
+                </h2>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                  {/* Card 1: New Registration */}
+                  <div
+                    onClick={() => router.push("/user/login?mode=register")}
+                    className="bg-stone-50/80 border border-stone-100 hover:border-amber-500 rounded-3xl p-6 cursor-pointer hover:-translate-y-1 transition duration-300 flex flex-col justify-between group h-full min-h-[160px]"
+                  >
+                    <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
+                      <PlusCircle size={20} />
+                    </div>
+                    <div>
+                      <h3 className="font-extrabold text-stone-800 text-base leading-snug group-hover:text-amber-600 transition">
+                        नया रजिस्ट्रेशन
+                      </h3>
+                      <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wide mt-1">
+                        New Registration
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Card 2: Exam Center List */}
+                  <div
+                    onClick={() => setIsExamVenueModalOpen(true)}
+                    className="bg-stone-50/80 border border-stone-100 hover:border-amber-500 rounded-3xl p-6 cursor-pointer hover:-translate-y-1 transition duration-300 flex flex-col justify-between group h-full min-h-[160px]"
+                  >
+                    <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
+                      <MapPin size={20} />
+                    </div>
+                    <div>
+                      <h3 className="font-extrabold text-stone-800 text-base leading-snug group-hover:text-amber-600 transition">
+                        एग्जाम सेंटर सूची
+                      </h3>
+                      <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wide mt-1">
+                        Exam Venues
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Card 3: Student Login */}
+                  <div
+                    onClick={() => router.push("/user/login")}
+                    className="bg-stone-50/80 border border-stone-100 hover:border-amber-500 rounded-3xl p-6 cursor-pointer hover:-translate-y-1 transition duration-300 flex flex-col justify-between group h-full min-h-[160px]"
+                  >
+                    <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
+                      <User size={20} />
+                    </div>
+                    <div>
+                      <h3 className="font-extrabold text-stone-800 text-base leading-snug group-hover:text-amber-600 transition">
+                        स्टूडेंट लॉगिन
+                      </h3>
+                      <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wide mt-1">
+                        Student Login
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <h2 className="text-2xl font-black text-stone-900 uppercase tracking-tight pl-2">
+                Verified Temples Directory
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {verifiedTemples.map((temple, index) => (
                 <div
                   key={temple._id || temple.id}
@@ -1070,53 +1449,65 @@ export default function App() {
                     setView("detail");
                     window.scrollTo(0, 0);
                   }}
-                  className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 border border-stone-100 flex flex-col md:flex-row cursor-pointer group"
+                  className="bg-white rounded-[2.5rem] overflow-hidden shadow-sm hover:shadow-2xl hover:-translate-y-1.5 transition-all duration-550 border border-stone-100 flex flex-col cursor-pointer group h-full justify-between"
                 >
-                  <div className="md:w-2/5 relative h-64 md:h-auto">
+                  <div className="h-64 relative overflow-hidden shrink-0">
                     <img
                       src={temple.images[0]}
                       alt={temple.name}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
                     />
                     <div className="absolute top-4 left-4 flex gap-2">
-                      <span className="bg-white/95 backdrop-blur px-3 py-1 rounded-full text-[10px] font-bold text-amber-700 uppercase tracking-widest flex items-center gap-1 shadow-sm">
-                        <Globe size={10} /> {temple.country}
+                      <span className="bg-stone-900/80 backdrop-blur px-3 py-1.5 rounded-full text-[9px] font-black text-white uppercase tracking-widest flex items-center gap-1.5 shadow-md border border-white/10">
+                        <Globe size={11} className="text-amber-400" /> {temple.country}
                       </span>
                     </div>
                   </div>
-                  <div className="md:w-3/5 p-6 flex flex-col justify-between space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-start">
-                        <h3 className="text-xl font-bold text-stone-800 leading-snug group-hover:text-amber-600 transition-colors">
+                  <div className="p-7 flex flex-col justify-between flex-1 space-y-5">
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-start gap-2">
+                        <h3 className="text-xl font-extrabold text-stone-800 leading-snug group-hover:text-amber-600 transition-colors duration-300">
                           {temple.name}
                         </h3>
-                        <CheckCircle2
-                          className="text-green-500 shrink-0"
-                          size={20}
-                        />
+                        <div className="bg-green-50 p-1 rounded-full shrink-0 group-hover:scale-110 transition-transform duration-300">
+                          <CheckCircle2
+                            className="text-green-500"
+                            size={18}
+                          />
+                        </div>
                       </div>
-                      <div className="flex items-center text-stone-500 text-sm font-medium">
-                        <MapPin size={16} className="mr-1 text-amber-500" />
+                      <div className="flex items-center text-stone-500 text-sm font-semibold">
+                        <MapPin size={16} className="mr-1.5 text-amber-500 group-hover:animate-bounce" />
                         {temple.locality}, {temple.city}
                       </div>
                     </div>
 
-                    {/* NEW: Temple ID Display  */}
-                    <div className="flex items-center text-[10px] text-stone-400 font-mono tracking-tighter bg-stone-50 w-fit px-2 py-0.5 rounded border border-stone-100">
-                      <span className="font-bold text-stone-500 mr-1 uppercase">
-                        ID:
+                    <div className="flex items-center gap-4">
+                      {/* Temple ID Display */}
+                      <div className="flex items-center text-[10px] text-stone-400 font-mono tracking-wider bg-stone-50 w-fit px-2.5 py-1 rounded border border-stone-100">
+                        <span className="font-bold text-stone-500 mr-1 uppercase">
+                          ID:
+                        </span>
+                        {temple.displayId || String(index + 1).padStart(2, "0")}
+                      </div>
+
+                      {/* Display city / state pill */}
+                      <span className="text-[10px] font-bold text-stone-500 bg-stone-100/50 border border-stone-200/40 px-2 py-0.5 rounded-md">
+                        {temple.city}
                       </span>
-                      {/* Displays the sequential ID from database or fallback to index */}
-                      {temple.displayId || String(index + 1).padStart(2, "0")}
                     </div>
 
                     <div className="pt-4 border-t border-stone-100 flex items-center justify-between">
-                      <div className="flex items-center gap-1 text-amber-500 font-bold text-sm">
-                        <Star size={16} fill="currentColor" />{" "}
-                        {temple.rating > 0 ? temple.rating : "New"}
+                      <div className="flex items-center gap-1.5 text-amber-600 font-extrabold text-sm">
+                        <Star size={16} className="fill-amber-500 text-amber-500" />
+                        {temple.rating > 0 ? (
+                          <span>{temple.rating.toFixed(1)} <span className="text-stone-400 font-medium text-xs">/ 5</span></span>
+                        ) : (
+                          <span className="text-amber-550 font-bold bg-amber-50 px-2 py-0.5 rounded-md text-xs">New Atishaya</span>
+                        )}
                       </div>
-                      <span className="text-xs text-stone-400 font-bold uppercase tracking-wider flex items-center gap-1 group-hover:text-amber-600 transition-colors">
-                        View Details <ArrowRight size={14} />
+                      <span className="text-xs text-stone-500 font-black uppercase tracking-widest flex items-center gap-1 group-hover:text-amber-600 transition-colors duration-300">
+                        Explore <ArrowRight size={13} className="group-hover:translate-x-1 transition-transform duration-300" />
                       </span>
                     </div>
                   </div>
@@ -1136,7 +1527,8 @@ export default function App() {
               </div>
             )}
           </div>
-        )}
+        </div>
+      )}
 
         {/* VIEW: TEMPLE DETAIL */}
         {view === "detail" && selectedTemple && (
@@ -1602,7 +1994,7 @@ export default function App() {
                     <div className="grid grid-cols-1 gap-6">
                       <div className="space-y-1.5">
                         <label className="text-sm font-bold text-stone-700 ml-1">
-                          Temple Full Name
+                          Exam Centre Full Name
                         </label>
                         <input
                           required
@@ -1612,6 +2004,54 @@ export default function App() {
                           value={formData.name}
                           onChange={(e) =>
                             setFormData({ ...formData, name: e.target.value })
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-bold text-stone-700 ml-1">
+                          Centre Code
+                        </label>
+                        <input
+                          required
+                          type="text"
+                          className="w-full px-5 py-4 bg-stone-50 border border-stone-200 rounded-2xl focus:bg-white focus:ring-2 focus:ring-amber-500 outline-none transition shadow-sm"
+                          placeholder="e.g. C001"
+                          value={formData.centreCode}
+                          onChange={(e) =>
+                            setFormData({ ...formData, centreCode: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-bold text-stone-700 ml-1">
+                          Centre Incharge
+                        </label>
+                        <input
+                          required
+                          type="text"
+                          className="w-full px-5 py-4 bg-stone-50 border border-stone-200 rounded-2xl focus:bg-white focus:ring-2 focus:ring-amber-500 outline-none transition shadow-sm"
+                          placeholder="e.g. Rahul Jain"
+                          value={formData.incharge}
+                          onChange={(e) =>
+                            setFormData({ ...formData, incharge: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-bold text-stone-700 ml-1">
+                          Capacity (Seats)
+                        </label>
+                        <input
+                          required
+                          type="number"
+                          className="w-full px-5 py-4 bg-stone-50 border border-stone-200 rounded-2xl focus:bg-white focus:ring-2 focus:ring-amber-500 outline-none transition shadow-sm"
+                          placeholder="e.g. 100"
+                          value={formData.capacity || ""}
+                          onChange={(e) =>
+                            setFormData({ ...formData, capacity: Number(e.target.value) })
                           }
                         />
                       </div>
@@ -1874,6 +2314,9 @@ export default function App() {
                           setEditingTempleId(null);
                           setFormData({
                             name: "",
+                            centreCode: "",
+                            capacity: 0,
+                            incharge: "",
                             country: "India",
                             state: "",
                             city: "",
@@ -2009,7 +2452,7 @@ export default function App() {
                 </div>
 
                 {/* Stats & Controls Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-9 gap-4 mb-8">
                   {/* Stats: Pending */}
                   <div className="px-5 py-3 bg-amber-50 rounded-2xl border border-amber-100 text-center shadow-sm">
                     <span className="text-[10px] text-amber-600 font-bold uppercase block tracking-wider mb-1">
@@ -2046,18 +2489,66 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Action: Subadmins */}
+                  {/* Action: Students */}
                   <div
-                    onClick={() => setIsSubadminModalOpen(true)}
-                    className="px-5 py-3 bg-rose-50 rounded-2xl border border-rose-100 text-center cursor-pointer hover:bg-rose-100 transition-all active:scale-95 shadow-sm group"
+                    onClick={() => (window.location.href = "/admin/students")}
+                    className="px-5 py-3 bg-indigo-50 rounded-2xl border border-indigo-100 text-center cursor-pointer hover:bg-indigo-100 transition-all active:scale-95 shadow-sm group"
                   >
-                    <span className="text-[10px] text-rose-600 font-bold uppercase block tracking-wider mb-1">
-                      Subadmins
+                    <span className="text-[10px] text-indigo-600 font-bold uppercase block tracking-wider mb-1">
+                      Students
                     </span>
                     <div className="flex items-center justify-center gap-2">
-                      <User size={14} className="text-rose-600" />
-                      <span className="text-sm font-bold text-rose-900">
-                        Register New
+                      <Users size={14} className="text-indigo-600" />
+                      <span className="text-sm font-bold text-indigo-900">
+                        Directory
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Action: Teachers */}
+                  <div
+                    onClick={() => (window.location.href = "/admin/teachers")}
+                    className="px-5 py-3 bg-teal-50 rounded-2xl border border-teal-100 text-center cursor-pointer hover:bg-teal-100 transition-all active:scale-95 shadow-sm group"
+                  >
+                    <span className="text-[10px] text-teal-600 font-bold uppercase block tracking-wider mb-1">
+                      Teachers
+                    </span>
+                    <div className="flex items-center justify-center gap-2">
+                      <Users size={14} className="text-teal-600" />
+                      <span className="text-sm font-bold text-teal-900">
+                        Staff
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Action: Exams */}
+                  <div
+                    onClick={() => (window.location.href = "/admin/exams")}
+                    className="px-5 py-3 bg-purple-50 rounded-2xl border border-purple-100 text-center cursor-pointer hover:bg-purple-100 transition-all active:scale-95 shadow-sm group"
+                  >
+                    <span className="text-[10px] text-purple-600 font-bold uppercase block tracking-wider mb-1">
+                      Exams
+                    </span>
+                    <div className="flex items-center justify-center gap-2">
+                      <Calendar size={14} className="text-purple-600" />
+                      <span className="text-sm font-bold text-purple-900">
+                        Schedules
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Action: Results */}
+                  <div
+                    onClick={() => (window.location.href = "/admin/results")}
+                    className="px-5 py-3 bg-emerald-50 rounded-2xl border border-emerald-100 text-center cursor-pointer hover:bg-emerald-100 transition-all active:scale-95 shadow-sm group"
+                  >
+                    <span className="text-[10px] text-emerald-600 font-bold uppercase block tracking-wider mb-1">
+                      Results
+                    </span>
+                    <div className="flex items-center justify-center gap-2">
+                      <Megaphone size={14} className="text-emerald-600" />
+                      <span className="text-sm font-bold text-emerald-900">
+                        Merit List
                       </span>
                     </div>
                   </div>
@@ -2078,43 +2569,27 @@ export default function App() {
                         className="text-amber-600 group-hover:rotate-12 transition-transform"
                       />
                       <span className="text-sm font-bold text-amber-900">
-                        Notifications
+                        Broadcasts
                       </span>
                     </div>
                   </div>
 
-                  {/* Action: Events */}
+                  {/* Action: Banners */}
                   <div
-                    onClick={() => setActiveAdminSubView("events")}
-                    className={`px-5 py-3 rounded-2xl border text-center cursor-pointer transition-all active:scale-95 shadow-sm group ${activeAdminSubView === "events"
-                      ? "bg-amber-100 border-amber-200"
-                      : "bg-blue-50 border-blue-100 hover:bg-blue-100"
-                      }`}
+                    onClick={() => setActiveAdminSubView("banners")}
+                    className={`px-5 py-3 rounded-2xl border text-center cursor-pointer transition-all active:scale-95 shadow-sm group ${
+                      activeAdminSubView === "banners"
+                        ? "bg-rose-100 border-rose-200"
+                        : "bg-rose-50 border-rose-100 hover:bg-rose-100"
+                    }`}
                   >
-                    <span
-                      className={`text-[10px] font-bold uppercase block tracking-wider mb-1 ${activeAdminSubView === "events"
-                        ? "text-amber-600"
-                        : "text-blue-600"
-                        }`}
-                    >
-                      Events
+                    <span className="text-[10px] text-rose-600 font-bold uppercase block tracking-wider mb-1">
+                      Banners
                     </span>
                     <div className="flex items-center justify-center gap-2">
-                      <Calendar
-                        size={14}
-                        className={
-                          activeAdminSubView === "events"
-                            ? "text-amber-600"
-                            : "text-blue-600"
-                        }
-                      />
-                      <span
-                        className={`text-sm font-bold ${activeAdminSubView === "events"
-                          ? "text-amber-900"
-                          : "text-blue-900"
-                          }`}
-                      >
-                        Manage
+                      <ImageIcon size={14} className="text-rose-600" />
+                      <span className="text-sm font-bold text-rose-900">
+                        Carousel
                       </span>
                     </div>
                   </div>
@@ -2158,11 +2633,12 @@ export default function App() {
                                     <p className="font-bold text-stone-800 text-base truncate">
                                       {temple.name}
                                     </p>
-                                    <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wide">
-                                      ID:{" "}
-                                      {temple.displayId ||
-                                        String(index + 1).padStart(2, "0")}
-                                    </p>
+                                    <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-[10px] font-bold text-stone-400 uppercase tracking-wide">
+                                      <span>ID: {temple.displayId || String(index + 1).padStart(2, "0")}</span>
+                                      {(temple as any).centreCode && <span className="text-indigo-600 font-black">Code: {(temple as any).centreCode}</span>}
+                                      {(temple as any).incharge && <span className="text-orange-600 font-black">Incharge: {(temple as any).incharge}</span>}
+                                      {(temple as any).capacity !== undefined && <span className="text-teal-600 font-black">Capacity: {(temple as any).capacity}</span>}
+                                    </div>
                                   </div>
                                 </div>
                               </td>
@@ -2221,6 +2697,9 @@ export default function App() {
                                       );
                                       setFormData({
                                         name: temple.name,
+                                        centreCode: (temple as any).centreCode || "",
+                                        capacity: (temple as any).capacity || 0,
+                                        incharge: (temple as any).incharge || "",
                                         country: temple.country || "India",
                                         state: temple.state,
                                         city: temple.city,
@@ -2257,7 +2736,7 @@ export default function App() {
                           ))}
                         </tbody>
                       </table>
-                    ) : (
+                    ) : activeAdminSubView === "events" ? (
                       <div className="p-8">
                         <div className="flex justify-between items-center mb-6">
                           <h2 className="text-2xl font-black text-stone-900 uppercase tracking-tight">
@@ -2449,6 +2928,200 @@ export default function App() {
                                 </p>
                               </div>
                             )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-8 space-y-8 animate-in fade-in duration-500">
+                        <div className="flex justify-between items-center pb-4 border-b border-stone-100">
+                          <div>
+                            <h2 className="text-2xl font-black text-stone-900 uppercase tracking-tight">
+                              Manage Carousel Banners
+                            </h2>
+                            <p className="text-sm text-stone-500 mt-1">
+                              Upload and toggle active banners shown on the landing page carousel.
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => setActiveAdminSubView("temples")}
+                            className="text-stone-500 hover:text-stone-800 text-sm font-bold flex items-center gap-1 transition"
+                          >
+                            <ArrowLeft size={16} /> Back
+                          </button>
+                        </div>
+
+                        {/* Add Banner Form */}
+                        <form onSubmit={handleAddBanner} className="bg-stone-50/50 border border-stone-100 p-6 rounded-3xl space-y-6">
+                          <h3 className="text-lg font-bold text-stone-800 flex items-center gap-2">
+                            <PlusCircle size={20} className="text-amber-600" />
+                            Add New Banner
+                          </h3>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Banner Image Upload */}
+                            <div className="space-y-2">
+                              <label className="text-xs font-bold text-stone-500 uppercase ml-1 block">
+                                Banner Image (Compressed to JPG) <span className="text-red-500">*</span>
+                              </label>
+                              <div className="relative border-2 border-dashed border-stone-200 rounded-2xl p-6 hover:border-amber-500 transition-all flex flex-col items-center justify-center bg-white cursor-pointer group">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => handleImageUpload(e, "banner")}
+                                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                />
+                                {bannerData.imageUrl ? (
+                                  <div className="w-full h-32 relative rounded-lg overflow-hidden border border-stone-100">
+                                    <img
+                                      src={bannerData.imageUrl}
+                                      className="w-full h-full object-cover"
+                                      alt="Preview"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        setBannerData((prev) => ({ ...prev, imageUrl: "" }));
+                                      }}
+                                      className="absolute top-2 right-2 bg-red-600 text-white p-1.5 rounded-full hover:bg-red-700 transition"
+                                    >
+                                      <X size={14} />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="text-center space-y-2 pointer-events-none">
+                                    <Upload size={24} className="mx-auto text-stone-400 group-hover:text-amber-600 transition" />
+                                    <p className="text-sm font-semibold text-stone-600">Select Banner Image</p>
+                                    <p className="text-xs text-stone-400">JPG, PNG up to 5MB (automatically compressed)</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="space-y-4">
+                              {/* Title (Optional) */}
+                              <div>
+                                <label className="text-xs font-bold text-stone-500 uppercase ml-1 block">
+                                  Title / Heading Overlay (Optional)
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g. Welcome to Jain Pathshala"
+                                  className="w-full px-4 py-3 bg-white border border-stone-200 rounded-xl outline-none focus:ring-2 focus:ring-amber-500 transition-all text-sm font-semibold text-stone-700 mt-1"
+                                  value={bannerData.title}
+                                  onChange={(e) => setBannerData((prev) => ({ ...prev, title: e.target.value }))}
+                                />
+                              </div>
+
+                              {/* Redirect Link (Optional) */}
+                              <div>
+                                <label className="text-xs font-bold text-stone-500 uppercase ml-1 block">
+                                  Redirect Link URL (Optional)
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g. https://example.com or /admin/add-class"
+                                  className="w-full px-4 py-3 bg-white border border-stone-200 rounded-xl outline-none focus:ring-2 focus:ring-amber-500 transition-all text-sm font-semibold text-stone-700 mt-1"
+                                  value={bannerData.link}
+                                  onChange={(e) => setBannerData((prev) => ({ ...prev, link: e.target.value }))}
+                                />
+                              </div>
+
+                              {/* Active Status */}
+                              <div className="flex items-center gap-3 pt-2">
+                                <input
+                                  type="checkbox"
+                                  id="isActive"
+                                  className="w-4 h-4 text-amber-600 border-stone-300 rounded focus:ring-amber-500 cursor-pointer"
+                                  checked={bannerData.isActive}
+                                  onChange={(e) => setBannerData((prev) => ({ ...prev, isActive: e.target.checked }))}
+                                />
+                                <label htmlFor="isActive" className="text-sm font-bold text-stone-600 cursor-pointer">
+                                  Active immediately in carousel
+                                </label>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Submit Button */}
+                          <div className="flex justify-end">
+                            <button
+                              type="submit"
+                              className="bg-amber-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-amber-700 transition active:scale-95 text-sm shadow-sm"
+                            >
+                              Add Banner
+                            </button>
+                          </div>
+                        </form>
+
+                        {/* Banners List */}
+                        <div className="space-y-4">
+                          <h3 className="text-lg font-bold text-stone-800">Uploaded Banners ({banners.length})</h3>
+
+                          {banners.length === 0 ? (
+                            <div className="text-center py-12 text-stone-400 bg-stone-50 rounded-2xl border border-dashed border-stone-200">
+                              <ImageIcon size={40} className="mx-auto mb-3 opacity-20" />
+                              <p className="font-bold text-sm">No banners uploaded yet.</p>
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                              {banners.map((banner) => (
+                                <div key={banner._id} className="border border-stone-100 bg-white rounded-3xl overflow-hidden shadow-sm flex flex-col group hover:shadow-md transition">
+                                  <div className="h-40 relative bg-stone-50 border-b border-stone-100 overflow-hidden">
+                                    <img
+                                      src={banner.imageUrl}
+                                      className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                                      alt={banner.title || "Banner"}
+                                    />
+                                    <div className="absolute top-3 right-3 flex gap-2">
+                                      <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider shadow-sm backdrop-blur ${
+                                        banner.isActive
+                                          ? "bg-green-500/95 text-white"
+                                          : "bg-stone-500/95 text-white"
+                                      }`}>
+                                        {banner.isActive ? "Active" : "Inactive"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="p-4 flex-1 flex flex-col justify-between space-y-4">
+                                    <div>
+                                      <p className="font-bold text-stone-800 text-sm truncate">
+                                        {banner.title || <span className="text-stone-400 italic">No Title</span>}
+                                      </p>
+                                      <p className="text-xs text-stone-400 truncate mt-1">
+                                        {banner.link ? (
+                                          <a href={banner.link} target="_blank" rel="noopener noreferrer" className="text-amber-600 hover:underline">
+                                            {banner.link}
+                                          </a>
+                                        ) : (
+                                          <span className="italic">No redirect link</span>
+                                        )}
+                                      </p>
+                                    </div>
+
+                                    <div className="flex items-center justify-between pt-2 border-t border-stone-100">
+                                      <button
+                                        onClick={() => handleToggleBanner(banner._id, banner.isActive)}
+                                        className={`text-xs font-bold px-3 py-1.5 rounded-lg transition ${
+                                          banner.isActive
+                                            ? "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                                            : "bg-green-50 text-green-700 hover:bg-green-100"
+                                        }`}
+                                      >
+                                        {banner.isActive ? "Deactivate" : "Activate"}
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteBanner(banner._id)}
+                                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                        title="Delete Banner"
+                                      >
+                                        <Trash2 size={16} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
@@ -2720,6 +3393,93 @@ export default function App() {
           </div>
         )}
 
+        {/* --- EXAM CENTERS LIST MODAL --- */}
+        {isExamVenueModalOpen && (
+          <div className="fixed inset-0 bg-stone-900/60 backdrop-blur-md flex items-center justify-center z-[120] p-4 animate-in fade-in duration-300">
+            <div className="bg-white rounded-[2.5rem] p-8 max-w-2xl w-full shadow-2xl border border-stone-100 transform animate-in zoom-in-95 duration-300 max-h-[85vh] flex flex-col justify-between">
+              <div>
+                <div className="flex justify-between items-center mb-6 pb-4 border-b border-stone-100">
+                  <div>
+                    <h2 className="text-2xl font-black text-stone-900 uppercase tracking-tighter">
+                      एग्जाम सेंटर सूची
+                    </h2>
+                    <p className="text-stone-400 text-xs font-bold uppercase tracking-wider mt-0.5">
+                      Exam Venues & Schedules
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setIsExamVenueModalOpen(false)}
+                    className="p-2 text-stone-400 hover:text-stone-850 hover:bg-stone-50 rounded-full transition"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="overflow-y-auto max-h-[55vh] pr-2">
+                  {classesList.length === 0 ? (
+                    <div className="text-center py-12 text-stone-400">
+                      No exam schedules available at the moment.
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      {/* Header Row (Desktop only) */}
+                      <div className="hidden sm:grid grid-cols-12 gap-4 pb-3 border-b border-stone-100 text-[10px] font-black text-stone-400 uppercase tracking-widest px-2">
+                        <div className="col-span-4">Class / Grade</div>
+                        <div className="col-span-4">Venue / Center</div>
+                        <div className="col-span-4">Date & Time</div>
+                      </div>
+
+                      <div className="divide-y divide-stone-100">
+                        {classesList.map((cls) => (
+                          <div key={cls.grade} className="py-4 px-2 grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4 items-center">
+                            {/* Grade & Status */}
+                            <div className="col-span-1 sm:col-span-4">
+                              <h3 className="font-extrabold text-stone-850 text-base leading-tight">
+                                {cls.grade}
+                              </h3>
+                              {cls.examSubject && (
+                                <p className="text-[10px] text-orange-600 font-black uppercase tracking-wider mt-1">
+                                  Subject: {cls.examSubject}
+                                </p>
+                              )}
+                              <p className="text-xs text-stone-400 font-semibold mt-1">
+                                Status: <span className={cls.status === "Active" ? "text-green-600 font-bold" : "text-stone-550"}>{cls.status}</span>
+                              </p>
+                            </div>
+                            
+                            {/* Venue */}
+                            <div className="col-span-1 sm:col-span-4">
+                              <span className="text-[9px] font-black text-stone-400 uppercase tracking-widest sm:hidden block mb-0.5">Venue / Center</span>
+                              <span className="font-semibold text-stone-700 text-sm">{cls.examVenue || "Not Assigned"}</span>
+                            </div>
+
+                            {/* Date & Time */}
+                            <div className="col-span-1 sm:col-span-4">
+                              <span className="text-[9px] font-black text-stone-400 uppercase tracking-widest sm:hidden block mb-0.5">Date & Time</span>
+                              <span className="font-semibold text-stone-700 text-sm">
+                                {cls.examDate !== "TBA" ? `${cls.examDate} @ ${cls.examTime}` : "TBA"}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-8 pt-4 border-t border-stone-100 flex justify-end">
+                <button
+                  onClick={() => setIsExamVenueModalOpen(false)}
+                  className="bg-stone-900 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-black transition active:scale-95 text-sm"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* --- ADD CLASS MODAL --- */}
         {/* English Comment: Modal overlay for creating a new educational class */}
         {isClassModalOpen && (
@@ -2849,6 +3609,183 @@ export default function App() {
                 </button>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* VIEW: CLASSES */}
+        {view === "classes" && (
+          <div className="space-y-12 animate-in fade-in duration-500">
+            {/* Page Header */}
+            <div className="text-center max-w-3xl mx-auto space-y-4">
+              <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-black text-amber-700 bg-amber-50 border border-amber-100 uppercase tracking-widest">
+                शैक्षणिक पाठ्यक्रम (Curriculum)
+              </span>
+              <h1 className="text-4xl md:text-5xl font-extrabold text-stone-900 tracking-tight">
+                कक्षाएं <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-600 to-amber-800">1 से 12</span>
+              </h1>
+              <p className="text-stone-500 font-medium text-base md:text-lg">
+                प्राथमिक, माध्यमिक और उच्च माध्यमिक स्तर के लिए जैन संस्कारों और सिद्धांतों का सुनियोजित पाठ्यक्रम।
+              </p>
+            </div>
+
+            {/* Class Categories */}
+            {(() => {
+              // Group classes into Primary, Middle, and Senior
+              const primaryClasses = classesList.filter((cls) => {
+                const num = parseInt(cls.grade);
+                return num >= 1 && num <= 5;
+              }).sort((a, b) => parseInt(a.grade) - parseInt(b.grade));
+
+              const middleClasses = classesList.filter((cls) => {
+                const num = parseInt(cls.grade);
+                return num >= 6 && num <= 8;
+              }).sort((a, b) => parseInt(a.grade) - parseInt(b.grade));
+
+              const seniorClasses = classesList.filter((cls) => {
+                const num = parseInt(cls.grade);
+                return num >= 9 && num <= 12;
+              }).sort((a, b) => parseInt(a.grade) - parseInt(b.grade));
+
+              const sections = [
+                {
+                  title: "प्राथमिक स्तर (Primary Stage)",
+                  subtitle: "कक्षा 1 से 5 (Classes 1 to 5)",
+                  description: "बुनियादी जैन संस्कार, नीति कथाएं और नैतिक मूल्य।",
+                  topics: "Basic Jain Sanskar, Navkar Mantra, Moral Values, Stories",
+                  classes: primaryClasses,
+                  bgGrad: "from-amber-50 to-orange-50/30",
+                  borderCol: "border-amber-100",
+                  badgeCol: "bg-amber-100 text-amber-800",
+                },
+                {
+                  title: "माध्यमिक स्तर (Middle Stage)",
+                  subtitle: "कक्षा 6 से 8 (Classes 6 to 8)",
+                  description: "जैन भूगोल, तत्वज्ञान की शुरुआत और महान आत्माओं की जीवनियां।",
+                  topics: "Jain Geography, Intro to Tatva Gyan, Biographies of Great Souls",
+                  classes: middleClasses,
+                  bgGrad: "from-rose-50 to-orange-50/20",
+                  borderCol: "border-rose-100",
+                  badgeCol: "bg-rose-100 text-rose-850",
+                },
+                {
+                  title: "उच्चतर स्तर (Senior Stage)",
+                  subtitle: "कक्षा 9 से 12 (Classes 9 to 12)",
+                  description: "छह द्रव्य, सात तत्व, कर्म सिद्धांत और गहन जैन दर्शन।",
+                  topics: "Six Dravya, Seven Tatva, Karma Theory, Deep Philosophy",
+                  classes: seniorClasses,
+                  bgGrad: "from-purple-50 to-indigo-50/20",
+                  borderCol: "border-purple-100",
+                  badgeCol: "bg-purple-100 text-purple-800",
+                },
+              ];
+
+              return (
+                <div className="space-y-16">
+                  {sections.map((sec) => (
+                    <div key={sec.title} className="space-y-6">
+                      {/* Section Header Card */}
+                      <div className={`p-8 md:p-10 rounded-[2rem] bg-gradient-to-br ${sec.bgGrad} border ${sec.borderCol} space-y-4`}>
+                        <div className="flex flex-wrap items-center justify-between gap-4">
+                          <div>
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${sec.badgeCol}`}>
+                              {sec.subtitle}
+                            </span>
+                            <h2 className="text-2xl md:text-3xl font-black text-stone-900 mt-3">
+                              {sec.title}
+                            </h2>
+                          </div>
+                        </div>
+                        <p className="text-stone-600 text-sm md:text-base font-semibold leading-relaxed">
+                          {sec.description}
+                        </p>
+                        <div className="pt-4 border-t border-stone-200/50 flex flex-wrap gap-2 items-center">
+                          <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest">
+                            Key Curriculum Topics:
+                          </span>
+                          <span className="text-stone-700 text-xs font-bold bg-white/80 px-3 py-1 rounded-lg border border-stone-100">
+                            {sec.topics}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Classes Grid */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {sec.classes.length === 0 ? (
+                          <div className="col-span-full text-center py-8 text-stone-400 text-sm font-semibold italic bg-stone-50 rounded-2xl border border-dashed">
+                            No classes config found in the database.
+                          </div>
+                        ) : (
+                          sec.classes.map((cls) => {
+                            const hasSyllabus = (cls.syllabi && cls.syllabi.length > 0) || cls.syllabus;
+                            return (
+                              <div
+                                key={cls.grade}
+                                className="bg-white p-6 rounded-[2rem] border border-stone-150 hover:border-amber-500/50 hover:shadow-xl transition-all duration-300 flex flex-col justify-between space-y-6 group"
+                              >
+                                <div className="space-y-4">
+                                  <div className="flex justify-between items-center">
+                                    <h3 className="text-lg font-black text-stone-850 group-hover:text-amber-700 transition-colors">
+                                      {cls.grade}
+                                    </h3>
+                                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
+                                      cls.status === "Active" ? "bg-green-50 text-green-700 border border-green-100" : "bg-stone-50 text-stone-500 border"
+                                    }`}>
+                                      {cls.status}
+                                    </span>
+                                  </div>
+
+                                  {/* Subjects List */}
+                                  <div className="space-y-2">
+                                    <span className="text-[9px] font-bold text-stone-400 uppercase tracking-wider block">
+                                      Subjects / Topics
+                                    </span>
+                                    {cls.subjects && cls.subjects.length > 0 ? (
+                                      <div className="flex flex-wrap gap-1.5">
+                                        {cls.subjects.map((sub: string) => (
+                                          <span key={sub} className="text-[11px] font-medium text-stone-600 bg-stone-50 px-2 py-1 rounded-md">
+                                            {sub}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <p className="text-xs text-stone-400 italic">No custom subjects configured.</p>
+                                    )}
+                                  </div>
+
+                                  {/* Exam Info */}
+                                  <div className="bg-stone-50/50 p-4 rounded-xl border border-stone-100 space-y-2 text-xs">
+                                    <div className="flex justify-between">
+                                      <span className="text-stone-400 font-bold uppercase text-[9px] tracking-wider">Exam Date</span>
+                                      <span className="text-stone-750 font-semibold">{cls.examDate !== "TBA" ? cls.examDate : "TBA"}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="text-stone-400 font-bold uppercase text-[9px] tracking-wider">Center</span>
+                                      <span className="text-stone-750 font-semibold truncate max-w-[150px]">{cls.examVenue || "TBA"}</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <button
+                                  onClick={() => downloadSyllabus(cls)}
+                                  className={`w-full py-3.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                                    hasSyllabus
+                                      ? "bg-amber-600 hover:bg-amber-700 text-white shadow-md shadow-amber-200/50 hover:shadow-lg active:scale-[0.98]"
+                                      : "bg-stone-100 hover:bg-stone-150 text-stone-400 cursor-not-allowed"
+                                  }`}
+                                >
+                                  <Download size={14} />
+                                  {hasSyllabus ? "Download Syllabus (PDF)" : "Syllabus Unavailable"}
+                                </button>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         )}
       </main>
@@ -2985,7 +3922,7 @@ export default function App() {
             <div className="col-span-1 md:col-span-2 space-y-6">
               <div className="flex items-center">
                 <img
-                  src="https://amangupta.f24tech.com/jainconnect.png"
+                  src="/assets/Jain_logo.svg"
                   alt="Logo"
                   className="w-10 h-10 object-contain mr-3 opacity-80"
                 />

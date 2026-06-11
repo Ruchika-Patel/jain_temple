@@ -34,6 +34,9 @@ const committeeSchema = new mongoose.Schema({
 const TempleSchema = new mongoose.Schema(
   {
     displayId: { type: String, unique: true }, // "01", "02" style ID
+    centreCode: { type: String, unique: true, sparse: true },
+    capacity: { type: Number, default: 0 },
+    incharge: { type: String, default: "" },
     name: { type: String, required: true },
     country: { type: String, default: "India" },
     state: { type: String, required: true },

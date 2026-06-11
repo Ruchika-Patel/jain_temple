@@ -6,9 +6,16 @@ import { NextResponse } from "next/server";
 export async function POST(req: Request) {
   try {
     await connectDB();
-    const { email, password } = await req.json();
+    const { email: identifier, password } = await req.json();
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({
+      $or: [
+        { studentId: identifier },
+        { phone: identifier },
+        { email: identifier }
+      ]
+    });
+
     if (!user) {
       return NextResponse.json(
         { success: false, message: "User not found!" },
@@ -28,16 +35,20 @@ export async function POST(req: Request) {
       success: true,
       message: "Welcome back!",
       name: user.name,
-      email: user.email,
+      email: user.email || "",
       role: "user",
       templeName: user.templeName,
       studentClass: user.studentClass,
-      paymentId: user.paymentId,
+      paymentId: user.paymentId || "",
       phone: user.phone || "",
       address: user.address || "",
       city: user.city || "",
       state: user.state || "",
       pincode: user.pincode || "",
+      studentId: user.studentId || "",
+      rollNumber: user.rollNumber || "",
+      section: user.section || "A",
+      _id: user._id,
     });
   } catch (error: any) {
     return NextResponse.json(

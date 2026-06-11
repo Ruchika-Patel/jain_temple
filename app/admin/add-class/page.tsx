@@ -16,13 +16,15 @@ import {
 import StatusModal from "@/components/StatusModal";
 
 export default function AddClassPage() {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [syllabi, setSyllabi] = useState<any[]>([]);
   const [grade, setGrade] = useState("");
   const [examVenue, setExamVenue] = useState("");
   const [examDate, setExamDate] = useState("");
   const [examTime, setExamTime] = useState("");
   const [instructions, setInstructions] = useState("");
   const [isCompleted, setIsCompleted] = useState(false);
+  const [subjects, setSubjects] = useState("");
+  const [sections, setSections] = useState<string[]>(["A", "B", "C"]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [adminClasses, setAdminClasses] = useState<any[]>([]);
   const [modal, setModal] = useState<{
@@ -76,6 +78,9 @@ export default function AddClassPage() {
             setExamTime(classToEdit.examTime || "");
             setInstructions(classToEdit.instructions || "");
             setIsCompleted(classToEdit.isCompleted || false);
+            setSubjects(classToEdit.subjects ? classToEdit.subjects.join(", ") : "");
+            setSections(classToEdit.sections || ["A", "B", "C"]);
+            setSyllabi(classToEdit.syllabi || []);
           }
         }
       }
@@ -96,9 +101,29 @@ export default function AddClassPage() {
     return `${n}${suffix} Class`;
   });
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const filesArray = Array.from(e.target.files);
+      const newSyllabi = [...syllabi];
+
+      for (const file of filesArray) {
+        if (file.size > 2 * 1024 * 1024) {
+          showModal("error", "File Too Large", `File "${file.name}" is larger than 2MB limit.`);
+          continue;
+        }
+        try {
+          const fileData = await convertFileToBase64(file);
+          newSyllabi.push({
+            fileName: file.name,
+            fileData: fileData,
+            uploadedAt: new Date().toISOString(),
+          });
+        } catch (err) {
+          console.error("Error converting file:", err);
+        }
+      }
+      setSyllabi(newSyllabi);
+      e.target.value = "";
     }
   };
 
@@ -135,30 +160,22 @@ export default function AddClassPage() {
       return;
     }
 
-    let syllabusData = null;
-    if (selectedFile) {
-      if (selectedFile.size > 2 * 1024 * 1024) {
-        showModal("error", "File Too Large", "Please upload a file smaller than 2MB.");
-        return;
-      }
-      syllabusData = await convertFileToBase64(selectedFile);
-    }
-
     showModal("loading", "Deploying...", "Synchronizing with community portal");
 
     const newClassData = {
       id: editingId,
       grade,
+      subjects: subjects.split(",").map(s => s.trim()).filter(s => s !== ""),
+      sections,
       examVenue: examVenue || "Not Assigned",
       examDate: examDate || "TBA",
       examTime: examTime || "TBA",
       instructions: instructions || "No specific instructions",
       status: "Active",
       students: existingClass?.students || 0,
-      syllabus: syllabusData || existingClass?.syllabus || null,
-      fileName: selectedFile
-        ? selectedFile.name
-        : existingClass?.fileName || null,
+      syllabus: syllabi[0]?.fileData || null,
+      fileName: syllabi[0]?.fileName || null,
+      syllabi: syllabi,
       isCompleted: isCompleted,
     };
 
@@ -187,8 +204,10 @@ export default function AddClassPage() {
           setExamDate("");
           setExamTime("");
           setInstructions("");
+          setSubjects("");
+          setSections(["A", "B", "C"]);
           setEditingId(null);
-          setSelectedFile(null);
+          setSyllabi([]);
           setIsCompleted(false);
 
           // Refresh classes list
@@ -277,6 +296,9 @@ export default function AddClassPage() {
                       setExamTime(existing.examTime || "");
                       setInstructions(existing.instructions || "");
                       setIsCompleted(existing.isCompleted || false);
+                      setSubjects(existing.subjects ? existing.subjects.join(", ") : "");
+                      setSections(existing.sections || ["A", "B", "C"]);
+                      setSyllabi(existing.syllabi || []);
                     } else {
                       setEditingId(null);
                       setExamVenue("");
@@ -284,6 +306,9 @@ export default function AddClassPage() {
                       setExamTime("");
                       setInstructions("");
                       setIsCompleted(false);
+                      setSubjects("");
+                      setSections(["A", "B", "C"]);
+                      setSyllabi([]);
                     }
                   }}
                   className="w-full bg-stone-50 px-6 py-4 md:px-8 md:py-5 rounded-2xl border-2 border-stone-300 outline-none text-base font-bold text-stone-900"
@@ -310,9 +335,47 @@ export default function AddClassPage() {
                 </label>
               </div>
 
+              <div className="flex flex-col gap-3 md:col-span-2">
+                <label className="text-xs font-black text-stone-900 uppercase tracking-widest ml-2">
+                  Class Subjects (comma-separated)
+                </label>
+                <input
+                  type="text"
+                  value={subjects}
+                  onChange={(e) => setSubjects(e.target.value)}
+                  className="w-full bg-stone-50 px-6 py-4 md:px-8 md:py-5 rounded-2xl border-2 border-stone-300 outline-none text-base font-bold text-stone-900 placeholder:text-stone-400"
+                  placeholder="e.g. Mathematics, Science, English, Social Studies"
+                />
+              </div>
+
+              <div className="flex flex-col gap-3 md:col-span-2">
+                <label className="text-xs font-black text-stone-900 uppercase tracking-widest ml-2">
+                  Available Sections
+                </label>
+                <div className="flex flex-wrap gap-3">
+                  {["A", "B", "C", "D"].map((sec) => (
+                    <label key={sec} className="flex items-center gap-2 cursor-pointer font-bold text-sm text-stone-700 bg-stone-50 px-4 py-2 rounded-xl border border-stone-300 select-none">
+                      <input
+                        type="checkbox"
+                        checked={sections.includes(sec)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSections([...sections, sec]);
+                          } else {
+                            setSections(sections.filter((s) => s !== sec));
+                          }
+                        }}
+                        className="w-4 h-4 accent-orange-600"
+                      />
+                      Section {sec}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
               <div className="md:col-span-2 flex flex-col gap-3">
                 <label className="text-xs font-black text-stone-900 uppercase tracking-widest ml-2">
-                  Syllabus Material
+                  Syllabus Materials
                 </label>
                 <input
                   type="file"
@@ -320,116 +383,68 @@ export default function AddClassPage() {
                   className="hidden"
                   onChange={handleFileChange}
                   accept="application/pdf,image/*"
+                  multiple
                 />
                 <label
                   htmlFor="syllabus"
-                  className="flex flex-col items-center justify-center w-full py-10 bg-stone-100 border-2 border-dashed border-stone-400 rounded-[2.5rem] cursor-pointer hover:bg-orange-50 transition-all"
+                  className="flex flex-col items-center justify-center w-full py-10 bg-stone-100 border-2 border-dashed border-stone-400 rounded-[2.5rem] cursor-pointer hover:bg-orange-50 transition-all animate-in fade-in duration-300"
                 >
-                  {!selectedFile ? (
-                    <div className="flex flex-col items-center gap-2">
-                      {existingClass?.syllabus && (
-                        <div className="flex items-center gap-2 text-green-600 bg-green-50 px-3 py-1 rounded-full mb-2 border border-green-100 italic">
-                          <CheckCircle size={14} />
-                          <span className="text-[9px] font-black uppercase tracking-tighter">Syllabus Already Uploaded</span>
+                  <div className="flex flex-col items-center gap-2">
+                    <UploadCloud size={30} className="text-stone-700 animate-bounce" />
+                    <p className="text-[10px] font-black uppercase tracking-widest">
+                      Upload PDF/Image Files
+                    </p>
+                    <p className="text-[8px] text-stone-400 font-bold uppercase tracking-wider">
+                      (You can select multiple files, max 2MB each)
+                    </p>
+                  </div>
+                </label>
+
+                {/* Uploaded Files List */}
+                {syllabi.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-2">
+                      Uploaded Files ({syllabi.length})
+                    </p>
+                    <div className="space-y-2 max-h-[220px] overflow-y-auto bg-stone-50 p-4 rounded-3xl border border-stone-200">
+                      {syllabi.map((file, idx) => (
+                        <div key={idx} className="flex items-center justify-between bg-white p-3 rounded-xl border border-stone-200 shadow-sm animate-in slide-in-from-bottom-2">
+                          <div className="flex items-center gap-3 overflow-hidden">
+                            <FileText className="text-orange-600 shrink-0" size={18} />
+                            <span className="text-xs font-bold text-stone-800 truncate max-w-[200px] sm:max-w-md">
+                              {file.fileName}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newWindow = window.open();
+                                newWindow?.document.write(
+                                  `<iframe src="${file.fileData}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`
+                                );
+                              }}
+                              className="text-[10px] bg-stone-100 hover:bg-orange-100 hover:text-orange-700 text-stone-600 px-3 py-1.5 rounded-lg font-black uppercase tracking-wider transition-colors"
+                            >
+                              View
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (window.confirm(`Delete "${file.fileName}"?`)) {
+                                  setSyllabi(syllabi.filter((_, i) => i !== idx));
+                                }
+                              }}
+                              className="text-[10px] bg-red-50 hover:bg-red-500 hover:text-white text-red-500 px-3 py-1.5 rounded-lg font-black uppercase tracking-wider transition-colors"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </div>
-                      )}
-                      <UploadCloud size={30} className="text-stone-700" />
-                      <p className="text-[10px] font-black uppercase tracking-widest">
-                        {editingId
-                          ? "Upload New File (Optional)"
-                          : "Upload PDF/Image"}
-                      </p>
+                      ))}
                     </div>
-                  ) : (
-                    <div className="flex items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-stone-200">
-                      <FileText className="text-orange-600" size={24} />
-                      <span className="text-sm font-bold text-stone-900">
-                        {selectedFile.name}
-                      </span>
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setSelectedFile(null);
-                        }}
-                        className="text-red-500 p-1"
-                      >
-                        <X size={18} />
-                      </button>
-                    </div>
-                  )}
-                </label>
-              </div>
-            </div>
-
-            <button
-              onClick={handleSaveClassInfo}
-              className="mt-8 flex items-center gap-2 text-orange-600 font-black text-xs uppercase tracking-widest hover:bg-orange-50 px-6 py-3 rounded-xl border-2 border-orange-100 transition-all"
-            >
-              <CheckCircle size={16} /> Save Class Draft
-            </button>
-          </section>
-
-          {/* --- SECTION 2: EXAM DETAILS --- */}
-          <section className="bg-white rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 shadow-md border border-stone-200">
-            <div className="flex items-center gap-4 md:gap-6 mb-8 md:mb-10">
-              <div className="w-12 h-12 md:w-14 md:h-14 bg-stone-900 text-white rounded-2xl flex items-center justify-center shadow-lg">
-                <Calendar size={28} />
-              </div>
-              <h2 className="text-2xl md:text-3xl font-black text-stone-900 uppercase tracking-tight">
-                Exam Schedule
-              </h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="md:col-span-2 flex flex-col gap-3">
-                <label className="text-xs font-black text-stone-900 uppercase tracking-widest ml-2">
-                  Exam Center Venue
-                </label>
-                <div className="relative">
-                  <MapPin
-                    className="absolute left-6 top-5 text-orange-600"
-                    size={20}
-                  />
-                  <input
-                    value={examVenue}
-                    onChange={(e) => setExamVenue(e.target.value)}
-                    className="w-full bg-stone-50 pl-16 pr-6 py-4 md:pr-8 md:py-5 rounded-2xl border-2 border-stone-300 outline-none text-base font-bold text-stone-900 placeholder:text-stone-400"
-                    placeholder="LOCATION ADDRESS"
-                  />
-                </div>
-              </div>
-              <div className="flex flex-col gap-3">
-                <label className="text-xs font-black text-stone-900 uppercase tracking-widest ml-2">
-                  Exam Date
-                </label>
-                <input
-                  type="date"
-                  value={examDate}
-                  onChange={(e) => setExamDate(e.target.value)}
-                  className="w-full bg-stone-50 px-6 py-4 md:px-8 md:py-5 rounded-2xl border-2 border-stone-300 outline-none text-base font-bold text-stone-900"
-                />
-              </div>
-              <div className="flex flex-col gap-3">
-                <label className="text-xs font-black text-stone-900 uppercase tracking-widest ml-2">
-                  Exam Time
-                </label>
-                <input
-                  type="time"
-                  value={examTime}
-                  onChange={(e) => setExamTime(e.target.value)}
-                  className="w-full bg-stone-50 px-6 py-4 md:px-8 md:py-5 rounded-2xl border-2 border-stone-300 outline-none text-base font-bold text-stone-900"
-                />
-              </div>
-              <div className="md:col-span-2 flex flex-col gap-3">
-                <label className="text-xs font-black text-stone-900 uppercase tracking-widest ml-2">
-                  Instructions
-                </label>
-                <textarea
-                  rows={3}
-                  value={instructions}
-                  onChange={(e) => setInstructions(e.target.value)}
-                  className="w-full bg-stone-50 px-8 py-6 rounded-2xl border-2 border-stone-300 outline-none text-base font-bold text-stone-900 resize-none"
-                  placeholder="ADDITIONAL NOTES..."
-                ></textarea>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -453,6 +468,8 @@ export default function AddClassPage() {
                     setExamDate("");
                     setExamTime("");
                     setInstructions("");
+                    setSubjects("");
+                    setSections(["A", "B", "C"]);
                     setIsCompleted(false);
                     window.history.pushState({}, "", window.location.pathname);
                   }}
@@ -492,7 +509,7 @@ export default function AddClassPage() {
                       Syllabus Status
                     </th>
                     <th className="px-8 py-5 text-[10px] font-black text-stone-400 uppercase tracking-widest">
-                      Exam Schedule
+                      Subjects
                     </th>
                     <th className="px-8 py-5 text-[10px] font-black text-stone-400 uppercase tracking-widest text-right">
                       Actions
@@ -517,13 +534,13 @@ export default function AddClassPage() {
                       </td>
                       <td className="px-8 py-5">
                         <span
-                          className={`text-[10px] font-black px-3 py-1 rounded-full uppercase ${cls.syllabus ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"}`}
+                          className={`text-[10px] font-black px-3 py-1 rounded-full uppercase ${cls.syllabi && cls.syllabi.length > 0 ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"}`}
                         >
-                          {cls.syllabus ? "Uploaded" : "Pending"}
+                          {cls.syllabi && cls.syllabi.length > 0 ? `${cls.syllabi.length} Files` : "Pending"}
                         </span>
                       </td>
-                      <td className="px-8 py-5 text-xs text-stone-600 font-medium">
-                        {cls.examDate} at {cls.examTime}
+                      <td className="px-8 py-5 text-xs text-stone-600 font-semibold truncate max-w-[240px]">
+                        {cls.subjects && cls.subjects.length > 0 ? cls.subjects.join(", ") : "No Subjects"}
                       </td>
                       <td className="px-8 py-5 text-right">
                         <button
@@ -535,6 +552,9 @@ export default function AddClassPage() {
                             setExamTime(cls.examTime || "");
                             setInstructions(cls.instructions || "");
                             setIsCompleted(cls.isCompleted || false);
+                            setSubjects(cls.subjects ? cls.subjects.join(", ") : "");
+                            setSections(cls.sections || ["A", "B", "C"]);
+                            setSyllabi(cls.syllabi || []);
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                           }}
                           className="text-stone-400 hover:text-orange-600 transition-colors"

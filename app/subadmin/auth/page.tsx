@@ -79,6 +79,7 @@ function SubAdminAuthContent() {
         if (isLogin) {
           const canonicalTemple = data.templeName || formData.templeName;
           localStorage.setItem("subadmin_temple_name", canonicalTemple);
+          localStorage.setItem("subadmin_user", JSON.stringify(data.user));
 
           // English Comment: Delay redirect by 2 seconds
           setTimeout(() => {

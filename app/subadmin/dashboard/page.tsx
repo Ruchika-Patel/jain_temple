@@ -27,6 +27,8 @@ export default function SubAdminDashboard() {
     { name: "", designation: "", phone: "", email: "" },
   ]);
 
+
+
   const [adminData, setAdminData] = useState<any>(null);
   const [students, setStudents] = useState<any[]>([]);
   const [studentsLoading, setStudentsLoading] = useState(false);
@@ -80,7 +82,24 @@ export default function SubAdminDashboard() {
         const response = await fetch(url);
         const result = await response.json();
         if (result.success) {
-          setAssignedClasses(result.data);
+          let classesData = result.data;
+
+          // Filter classes if user is a teacher
+          const savedUser = localStorage.getItem("subadmin_user");
+          if (savedUser) {
+            try {
+              const parsed = JSON.parse(savedUser);
+              if (parsed.role === "teacher" && parsed.assignedClasses) {
+                classesData = classesData.filter((cls: any) =>
+                  parsed.assignedClasses.includes(cls.grade)
+                );
+              }
+            } catch (err) {
+              console.error(err);
+            }
+          }
+
+          setAssignedClasses(classesData);
         }
       } catch (error) {
         console.error("Error fetching classes:", error);
@@ -96,10 +115,24 @@ export default function SubAdminDashboard() {
   //  Set adminData using the existing temple name logic
   useEffect(() => {
     if (currentTemple) {
-      setAdminData({
+      const savedUser = localStorage.getItem("subadmin_user");
+      let userData = {
         templeName: currentTemple,
         role: "subadmin",
-      });
+      };
+      if (savedUser) {
+        try {
+          const parsed = JSON.parse(savedUser);
+          userData = {
+            ...userData,
+            ...parsed,
+            templeName: parsed.templeName || currentTemple,
+          };
+        } catch (err) {
+          console.error("Error parsing subadmin_user:", err);
+        }
+      }
+      setAdminData(userData);
       // PROACTIVELY SYNC TO LOCAL STORAGE
       if (typeof window !== "undefined") {
         const storedTemple = localStorage.getItem("subadmin_temple_name");
@@ -277,6 +310,7 @@ export default function SubAdminDashboard() {
 
   const handleLogout = () => {
     localStorage.removeItem("subadmin_temple_name");
+    localStorage.removeItem("subadmin_user");
     window.location.href = "/subadmin/auth";
   };
 
@@ -289,7 +323,7 @@ export default function SubAdminDashboard() {
             <ShieldCheck size={18} />
           </div>
           <span className="font-black text-amber-600 tracking-tighter text-sm uppercase">
-            SubAdmin
+            {adminData?.role === "teacher" ? "Staff Portal" : "SubAdmin"}
           </span>
         </div>
         <button
@@ -355,7 +389,7 @@ export default function SubAdminDashboard() {
             <ShieldCheck size={22} />
           </div>
           <span className="font-black text-amber-600 tracking-tighter text-xl uppercase">
-            SubAdmin
+            {adminData?.role === "teacher" ? "Staff Portal" : "SubAdmin"}
           </span>
         </div>
 
@@ -427,7 +461,7 @@ export default function SubAdminDashboard() {
                 </div>
               </div>
 
-              {/* Notification Bell - Space removed by placing it directly next to the divider */}
+              {/* Notification Bell */}
               <div className="pl-1">
                 <NotificationPanel
                   userRole="subadmin"
@@ -616,6 +650,25 @@ export default function SubAdminDashboard() {
         {/* --- DYNAMIC CLASSES SECTION --- */}
         {activeTab === "classes" && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-700">
+            {/* Teacher Details Bar */}
+            {adminData?.role === "teacher" && (
+              <div className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-amber-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                  <h4 className="text-sm font-black text-stone-900 uppercase tracking-widest">
+                    Teacher: <span className="text-amber-600">{adminData.name}</span>
+                  </h4>
+                  <p className="text-xs text-stone-500 font-bold mt-1">
+                    Phone: {adminData.phone || "N/A"} | Email: {adminData.email || "N/A"}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider bg-stone-100 text-stone-700 px-4 py-2 rounded-full border border-stone-200 shadow-sm">
+                    Subjects: {adminData.assignedSubjects?.join(", ") || "None"}
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* Summary Card for Total Registrations */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-white p-8 rounded-[2.5rem] border border-stone-100 shadow-sm flex items-center gap-6 group hover:border-amber-400 transition-all duration-500">
@@ -812,31 +865,33 @@ export default function SubAdminDashboard() {
                   <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
                     <BookOpen size={20} />
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 space-y-2">
                     <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">
                       Syllabus Details (Click to View)
                     </p>
-                    <div
-                      onClick={() => {
-                        if (selectedPortal.syllabus) {
-                          const newWindow = window.open();
-                          newWindow?.document.write(
-                            `<iframe src="${selectedPortal.syllabus}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`,
-                          );
-                        } else {
-                          showModal(
-                            "error",
-                            "Not Available",
-                            "No syllabus file has been uploaded for this class yet.",
-                          );
-                        }
-                      }}
-                      className="mt-2 p-6 bg-stone-50 rounded-2xl text-blue-600 text-sm font-bold italic leading-relaxed border border-stone-100 cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-all"
-                    >
-                      {selectedPortal.fileName
-                        ? `📄 ${selectedPortal.fileName}`
-                        : "Click to view syllabus document"}
-                    </div>
+                    {selectedPortal.syllabi && selectedPortal.syllabi.length > 0 ? (
+                      <div className="space-y-2">
+                        {selectedPortal.syllabi.map((file: any, fIdx: number) => (
+                          <div
+                            key={fIdx}
+                            onClick={() => {
+                              const newWindow = window.open();
+                              newWindow?.document.write(
+                                `<iframe src="${file.fileData}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`,
+                              );
+                            }}
+                            className="p-4 bg-stone-50 hover:bg-blue-50 border border-stone-100 hover:border-blue-200 rounded-2xl text-blue-600 text-sm font-bold italic cursor-pointer transition-all flex items-center gap-2"
+                          >
+                            <span>📄</span>
+                            <span className="truncate flex-1">{file.fileName}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-6 bg-stone-50 rounded-2xl text-stone-400 text-xs font-bold italic border border-stone-100">
+                        No syllabus file has been uploaded for this class yet.
+                      </div>
+                    )}
                   </div>
                 </div>
 

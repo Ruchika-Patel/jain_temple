@@ -6,7 +6,8 @@ import {
     Menu,
     X,
     LayoutDashboard,
-    Users
+    Users,
+    BookOpen
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -33,6 +34,15 @@ const Navbar: React.FC<NavbarProps> = ({
             active: view === "home" && !selectedTempleId,
             onClick: () => {
                 setView("home");
+                setSelectedTempleId(null);
+            }
+        },
+        {
+            label: "Classes",
+            icon: <BookOpen size={18} />,
+            active: view === "classes",
+            onClick: () => {
+                setView("classes");
                 setSelectedTempleId(null);
             }
         },
@@ -71,7 +81,7 @@ const Navbar: React.FC<NavbarProps> = ({
                         }}
                     >
                         <img
-                            src="https://amangupta.f24tech.com/jainconnect.png"
+                            src="/assets/Jain_logo.svg"
                             alt="Logo"
                             className="w-10 h-10 object-contain mr-3 group-hover:scale-110 transition-transform"
                         />

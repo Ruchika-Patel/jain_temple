@@ -18,9 +18,10 @@ function UserAuthContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const templeFromUrl = searchParams.get("temple"); // URL se temple name le raha hai
+  const modeFromUrl = searchParams.get("mode");
 
-  // English Comment: If temple name exists in URL, default to Register (isLogin = false)
-  const [isLogin, setIsLogin] = useState(!templeFromUrl);
+  // English Comment: Default to Register if temple exists in URL or mode is register
+  const [isLogin, setIsLogin] = useState(!templeFromUrl && modeFromUrl !== "register");
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState<{
     isOpen: boolean;
@@ -45,6 +46,7 @@ function UserAuthContent() {
     }
   };
   const [availableClasses, setAvailableClasses] = useState<any[]>([]);
+  const [temples, setTemples] = useState<any[]>([]);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -81,10 +83,29 @@ function UserAuthContent() {
       }
     };
 
+    const fetchTemples = async () => {
+      try {
+        const res = await fetch("/api/temples");
+        const result = await res.json();
+        if (result.success) {
+          const verified = result.data.filter((t: any) => t.status === "verified");
+          setTemples(verified);
+          const defaultTemple = templeFromUrl || (verified.length > 0 ? verified[0].name : "");
+          setFormData((prev) => ({
+            ...prev,
+            templeName: defaultTemple,
+          }));
+        }
+      } catch (error) {
+        console.error("Error fetching temples:", error);
+      }
+    };
+
     if (!isLogin) {
       fetchRegClass();
+      fetchTemples();
     }
-  }, [isLogin]);
+  }, [isLogin, templeFromUrl]);
 
   const handlePayment = async () => {
     if (formData.phone.length !== 10) {
@@ -109,7 +130,7 @@ function UserAuthContent() {
       amount: 500 * 100,
       currency: "INR",
       name: "Temple Education Portal",
-      description: `Registration for ${formData.studentClass} at ${templeFromUrl || "Temple"}`,
+      description: `Registration for ${formData.studentClass} at ${formData.templeName || "Temple"}`,
       handler: function (response: any) {
         localStorage.setItem("payment_status", "success");
         localStorage.setItem("last_payment_id", response.razorpay_payment_id);
@@ -188,6 +209,10 @@ function UserAuthContent() {
           city: result.city || "",
           state: result.state || "",
           pincode: result.pincode || "",
+          studentId: result.studentId || "",
+          rollNumber: result.rollNumber || "",
+          section: result.section || "A",
+          _id: result._id,
         };
         localStorage.setItem("current_user", JSON.stringify(userData));
 
@@ -229,7 +254,7 @@ function UserAuthContent() {
         email: formData.email,
         password: formData.password,
         studentClass: formData.studentClass,
-        templeName: templeFromUrl || "General",
+        templeName: formData.templeName || "General",
         paymentId: razorpayId,
         amount: 500,
         paid: true,
@@ -249,7 +274,14 @@ function UserAuthContent() {
       const result = await res.json();
 
       if (res.ok && result.success) {
-        localStorage.setItem("current_user", JSON.stringify(userData));
+        const registeredUser = {
+          ...userData,
+          _id: result.data?._id,
+          studentId: result.data?.studentId || "",
+          rollNumber: result.data?.rollNumber || "",
+          section: result.data?.section || "A",
+        };
+        localStorage.setItem("current_user", JSON.stringify(registeredUser));
         showModal(
           "success",
           "Success!",
@@ -299,23 +331,6 @@ function UserAuthContent() {
         <form onSubmit={handleSubmit} className="space-y-5">
           {!isLogin && (
             <>
-              {/* Temple Display Badge - Under Heading */}
-              {templeFromUrl && (
-                <div className="p-4 bg-stone-50 border border-stone-100 rounded-2xl flex items-center gap-3 mb-6 animate-in fade-in slide-in-from-top-4">
-                  <div className="w-10 h-10 bg-amber-600 text-white rounded-xl flex items-center justify-center shadow-md">
-                    <MapPin size={20} />
-                  </div>
-                  <div className="flex-1 overflow-hidden">
-                    <p className="text-[8px] font-black text-stone-400 uppercase tracking-widest">
-                      Selected Center
-                    </p>
-                    <p className="text-sm font-black text-stone-900 uppercase truncate italic">
-                      {templeFromUrl}
-                    </p>
-                  </div>
-                </div>
-              )}
-
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-stone-500 uppercase ml-2">
                   Full Name
@@ -367,12 +382,51 @@ function UserAuthContent() {
                   </select>
                 </div>
               </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-stone-500 uppercase ml-2">
+                  Select Exam Center / Temple
+                </label>
+                <div className="relative">
+                  <MapPin
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400"
+                    size={18}
+                  />
+                  <select
+                    required
+                    className={inputStyle + " appearance-none"}
+                    value={formData.templeName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, templeName: e.target.value })
+                    }
+                  >
+                    {temples.length > 0 ? (
+                      <>
+                        {templeFromUrl && !temples.some((t) => t.name === templeFromUrl) && (
+                          <option value={templeFromUrl}>{templeFromUrl}</option>
+                        )}
+                        {temples.map((t, i) => (
+                          <option key={i} value={t.name}>
+                            {t.name}
+                          </option>
+                        ))}
+                      </>
+                    ) : (
+                      templeFromUrl ? (
+                        <option value={templeFromUrl}>{templeFromUrl}</option>
+                      ) : (
+                        <option disabled>No exam centers available</option>
+                      )
+                    )}
+                  </select>
+                </div>
+              </div>
             </>
           )}
 
-          <div className="space-y-1">
+           <div className="space-y-1">
             <label className="text-[10px] font-black text-stone-500 uppercase ml-2">
-              Email Address
+              {isLogin ? "Student ID / Mobile Number" : "Email Address"}
             </label>
             <div className="relative">
               <Mail
@@ -380,9 +434,9 @@ function UserAuthContent() {
                 size={18}
               />
               <input
-                type="email"
-                required
-                placeholder="email@example.com"
+                type={isLogin ? "text" : "email"}
+                required={isLogin}
+                placeholder={isLogin ? "e.g. STU1001 or Mobile" : "email@example.com (optional)"}
                 className={inputStyle}
                 value={formData.email}
                 onChange={(e) =>

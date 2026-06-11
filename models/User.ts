@@ -8,12 +8,29 @@ const UserSchema = new mongoose.Schema(
     },
     email: {
       type: String,
-      required: true,
+      required: false,
+    },
+    studentId: {
+      type: String,
       unique: true,
+      sparse: true,
+    },
+    rollNumber: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    section: {
+      type: String,
+      default: "A",
     },
     password: {
       type: String,
       required: true,
+    },
+    plainPassword: {
+      type: String,
+      required: false,
     },
     role: {
       type: String,
@@ -67,5 +84,9 @@ const UserSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// English Comment: Checking if the model exists before creating a new one to prevent errors in Next.js HMR
-export default mongoose.models.User || mongoose.model("User", UserSchema);
+// Delete cached model to force Mongoose to compile it with the updated schema under Next.js HMR
+if (mongoose.models.User) {
+  delete mongoose.models.User;
+}
+
+export default mongoose.model("User", UserSchema);

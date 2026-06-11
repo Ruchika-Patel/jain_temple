@@ -38,25 +38,36 @@ export async function POST(req: Request) {
       );
     }
 
-    // 1. Check if user exists
-    const userExists = await User.findOne({ email });
-    if (userExists) {
-      return NextResponse.json(
-        { success: false, message: "Email already registered" },
-        { status: 400 },
-      );
+    // 1. Check if user exists (only if email is provided)
+    if (email && email.trim() !== "") {
+      const userExists = await User.findOne({ email });
+      if (userExists) {
+        return NextResponse.json(
+          { success: false, message: "Email already registered" },
+          { status: 400 },
+        );
+      }
     }
 
     // 2. Hash Password
     const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Generate Student ID: e.g., STU1001 + count
+    const studentCount = await User.countDocuments({ role: "user" });
+    const studentId = `STU${String(1001 + studentCount).padStart(4, "0")}`;
+
+    // Generate Roll Number: e.g., Class abbreviation + sequence
+    const classCount = await User.countDocuments({ role: "user", studentClass });
+    const rollNumber = `${studentClass.replace(/\s+/g, "").slice(0, 5).toUpperCase()}-${String(101 + classCount)}`;
 
     // 3. Create User in MongoDB
     const newUser = await User.create({
       name,
       email,
       password: hashedPassword,
+      plainPassword: password,
       studentClass,
-      templeName,
+      templeName: templeName || "General",
       paymentId,
       amount,
       phone,
@@ -66,6 +77,9 @@ export async function POST(req: Request) {
       pincode,
       paid: true,
       role: "user",
+      studentId,
+      rollNumber,
+      section: "A",
     });
 
     return NextResponse.json({ success: true, data: newUser }, { status: 201 });

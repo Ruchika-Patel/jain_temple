@@ -1,5 +1,6 @@
 import connectDB from "@/lib/mongodb";
 import Class from "@/models/Class";
+import Exam from "@/models/Exam";
 import { NextResponse } from "next/server";
 
 const HARDCODED_CLASSES = Array.from({ length: 12 }, (_, i) => {
@@ -17,13 +18,26 @@ export async function GET(req: Request) {
         const templeName = searchParams.get("templeName");
         const forRegistration = searchParams.get("forRegistration");
 
-        // Fetch existing class data from DB
-        const dbClasses = await Class.find({}).lean();
+        // Fetch existing class data from DB and map legacy single syllabus to new syllabi array
+        const dbClasses = (await Class.find({}).lean()).map((c: any) => {
+            const syllabi = c.syllabi && c.syllabi.length > 0
+                ? c.syllabi
+                : (c.syllabus ? [{ _id: "legacy", fileName: c.fileName || "Syllabus_Document.pdf", fileData: c.syllabus, uploadedAt: c.createdAt || new Date() }] : []);
+            return {
+                ...c,
+                syllabi
+            };
+        });
 
-        // Merge hardcoded classes with DB data
+        // Fetch all exams from DB sorted by date
+        const exams = await Exam.find({}).sort({ date: 1 }).lean();
+
+        // Merge hardcoded classes with DB data and dynamic exams
         const mergedClasses = HARDCODED_CLASSES.map((grade, index) => {
             const dbClass = dbClasses.find((c: any) => c.grade === grade);
-            return dbClass || {
+            const examForClass = exams.find((e: any) => e.grade === grade);
+
+            const baseClass = dbClass ? { ...dbClass } : {
                 grade,
                 examVenue: "Not Assigned",
                 examDate: "TBA",
@@ -33,6 +47,20 @@ export async function GET(req: Request) {
                 isCompleted: false,
                 students: 0
             };
+
+            // Overlay exam details if scheduled
+            if (examForClass) {
+                baseClass.examDate = examForClass.date || "TBA";
+                baseClass.examTime = examForClass.time || "TBA";
+                baseClass.examSubject = examForClass.subject || "";
+                
+                // If it is an online exam, show Online Portal as venue
+                if (examForClass.examType === "online") {
+                    baseClass.examVenue = "Online Portal";
+                }
+            }
+
+            return baseClass;
         });
 
         if (forRegistration === "true") {
